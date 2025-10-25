@@ -9,7 +9,7 @@
   <style>
     body {
       font-family: "Noto Sans TC", sans-serif;
-      max-width: 900px;
+      max-width: 1200px;
       margin: 2rem auto;
       padding: 0 1rem;
       background: #fafafa;
@@ -30,10 +30,23 @@
       box-shadow: 0 0 6px rgba(0, 0, 0, 0.1);
     }
 
+    .chart-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* ✅ 響應式三欄 */
+      gap: 1rem;
+    }
+
+    .chart-box {
+      background: #fff;
+      border-radius: 8px;
+      padding: 0.8rem;
+      box-shadow: 0 0 6px rgba(0, 0, 0, 0.1);
+    }
+
     .chart-container {
       position: relative;
       width: 100%;
-      aspect-ratio: 4 / 3; /* 固定圖表比例 4:3 */
+      aspect-ratio: 4 / 3; /* ✅ 固定比例 */
     }
 
     canvas {
@@ -42,11 +55,11 @@
     }
 
     .table-wrapper {
-      overflow-x: auto; /* ✅ 可水平捲動 */
+      overflow-x: auto;
     }
 
     table {
-      min-width: 800px; /* ✅ 確保在手機時可橫向滑動 */
+      min-width: 800px;
       width: 100%;
       border-collapse: collapse;
       margin-top: 0.5rem;
@@ -57,7 +70,7 @@
       border: 1px solid #ddd;
       padding: 6px;
       text-align: center;
-      white-space: nowrap; /* 不自動換行 */
+      white-space: nowrap;
     }
 
     th {
@@ -77,7 +90,7 @@
   <h1>🏃‍♀️ 運動紀錄統計</h1>
   <p class="note" id="todayDate"></p>
 
-  <!-- ✅ 最近 10 筆紀錄 放在最上方 -->
+  <!-- ✅ 最近 10 筆紀錄 -->
   <section>
     <h3>📅 最近 10 筆紀錄</h3>
     <div class="table-wrapper">
@@ -85,28 +98,28 @@
     </div>
   </section>
 
+  <!-- ✅ 三張圖並排 -->
   <section>
-    <h3>有氧運動時間</h3>
-    <div class="chart-container">
-      <canvas id="aerobicChart"></canvas>
-    </div>
-    <p id="avgAerobic"></p>
-  </section>
+    <h3>📊 月統計圖表</h3>
+    <div class="chart-grid">
+      <div class="chart-box">
+        <h4>有氧運動時間</h4>
+        <div class="chart-container"><canvas id="aerobicChart"></canvas></div>
+        <p id="avgAerobic"></p>
+      </div>
 
-  <section>
-    <h3>教練指定作業次數</h3>
-    <div class="chart-container">
-      <canvas id="assignedChart"></canvas>
-    </div>
-    <p id="avgAssigned"></p>
-  </section>
+      <div class="chart-box">
+        <h4>教練指定作業次數</h4>
+        <div class="chart-container"><canvas id="assignedChart"></canvas></div>
+        <p id="avgAssigned"></p>
+      </div>
 
-  <section>
-    <h3>肌力訓練次數</h3>
-    <div class="chart-container">
-      <canvas id="strengthChart"></canvas>
+      <div class="chart-box">
+        <h4>肌力訓練次數</h4>
+        <div class="chart-container"><canvas id="strengthChart"></canvas></div>
+        <p id="avgStrength"></p>
+      </div>
     </div>
-    <p id="avgStrength"></p>
   </section>
 
   <script>
@@ -205,7 +218,7 @@
               legend: { display: false },
               datalabels: {
                 color: "#fff",
-                anchor: "center",  // ✅ 文字放在長條中間
+                anchor: "center",
                 align: "center",
                 font: { weight: "bold", size: 12 },
                 formatter: v => v
@@ -254,3 +267,4 @@
   </script>
 </body>
 </html>
+
