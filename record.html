@@ -1,272 +1,191 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>運動紀錄統計圖表</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🏃‍♀️ 運動紀錄統計</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
-
   <style>
     body {
       font-family: "Noto Sans TC", sans-serif;
-      margin: 20px;
-      background-color: #f5f7fa;
+      max-width: 600px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      background: #fafafa;
       color: #333;
-      text-align: center;
-      line-height: 1.6;
     }
 
-    h1 {
-      color: #0077b6;
-      font-size: 28px;
-      margin-bottom: 10px;
+    h1 { text-align: center; color: #0077b6; }
+    section {
+      background: #fff;
+      padding: 1rem;
+      margin-top: 1rem;
+      border-radius: 8px;
+      box-shadow: 0 0 6px rgba(0, 0, 0, 0.1);
     }
 
-    h3 {
-      color: #333;
-      margin-top: 10px;
-      font-size: 18px;
+    label { display: block; margin-top: 0.6rem; }
+    input, button { padding: 0.4rem; font-size: 1rem; width: 100%; box-sizing: border-box; }
+    button {
+      background: #0077b6;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      margin-top: 1rem;
+      cursor: pointer;
     }
-
-    /* 表格容器可橫向滑動 */
-    #recentTable {
-      width: 100%;
-      overflow-x: auto;
-    }
+    button:hover { background: #0096c7; }
 
     table {
-      border-collapse: collapse;
       width: 100%;
-      min-width: 600px;
-      margin-top: 15px;
-      background-color: white;
-      box-shadow: 0 0 6px rgba(0,0,0,0.1);
+      border-collapse: collapse;
+      margin-top: 0.6rem;
     }
-
     th, td {
       border: 1px solid #ddd;
-      padding: 8px;
+      padding: 6px;
       text-align: center;
-      font-size: 14px;
+      font-size: 0.9rem;
     }
-
-    th {
-      background-color: #0077b6;
-      color: white;
-    }
-
-    /* === 三個圖表橫向排列 === */
-    .chart-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 20px;
-      margin-top: 30px;
-    }
-
-    .chart-container {
-      background-color: white;
-      border-radius: 10px;
-      box-shadow: 0 0 6px rgba(0,0,0,0.1);
-      padding: 10px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
+    th { background: #0077b6; color: #fff; }
 
     canvas {
-      max-width: 100%;
-      height: 260px;
+      width: 100%;
+      max-height: 250px;
     }
 
-    /* 響應式調整 */
-    @media (max-width: 768px) {
-      body {
-        margin: 10px;
-        font-size: 14px;
-      }
-      h1 {
-        font-size: 22px;
-      }
-      table th, table td {
-        font-size: 12px;
-        padding: 6px;
-      }
-      canvas {
-        height: 220px;
-      }
+    p.avg {
+      text-align: center;
+      margin-top: 0.3rem;
+      color: #666;
     }
   </style>
 </head>
-
 <body>
-  <h1>🏃‍♀️ 運動紀錄統計圖表</h1>
-  <p id="todayDate"></p>
+  <h1>🏃‍♀️ 運動紀錄統計</h1>
 
-  <div id="recentTable"></div>
+  <!-- 📋 輸入區 -->
+  <section>
+    <h3>新增運動紀錄</h3>
+    <form id="recordForm">
+      <label>日期：<input type="date" name="date" required></label>
+      <label>跑步 (分鐘)：<input type="number" name="running" min="0" required></label>
+      <label>肌力訓練 (次數)：<input type="number" name="strength" min="0" required></label>
+      <label>教練指定作業 (次數)：<input type="number" name="assigned" min="0" required></label>
+      <button type="submit">新增紀錄</button>
+    </form>
+  </section>
 
-  <!-- 圖表區：三個統計圖並列 -->
-  <div class="chart-grid">
-    <div class="chart-container">
-      <h3>有氧運動時間 (跑步 + 球類 + 健行)</h3>
-      <canvas id="aerobicChart"></canvas>
-      <p id="avgAerobic"></p>
-    </div>
+  <!-- 📊 圖表區 -->
+  <section>
+    <h3>有氧運動時間</h3>
+    <canvas id="aerobicChart"></canvas>
+    <p class="avg" id="avgAerobic"></p>
+  </section>
 
-    <div class="chart-container">
-      <h3>教練指定作業次數</h3>
-      <canvas id="assignedChart"></canvas>
-      <p id="avgAssigned"></p>
-    </div>
+  <section>
+    <h3>教練指定作業次數</h3>
+    <canvas id="assignedChart"></canvas>
+    <p class="avg" id="avgAssigned"></p>
+  </section>
 
-    <div class="chart-container">
-      <h3>肌力訓練次數 (肌力 + 瑜伽)</h3>
-      <canvas id="strengthChart"></canvas>
-      <p id="avgStrength"></p>
-    </div>
-  </div>
+  <section>
+    <h3>肌力訓練次數</h3>
+    <canvas id="strengthChart"></canvas>
+    <p class="avg" id="avgStrength"></p>
+  </section>
+
+  <!-- 📅 最近紀錄 -->
+  <section>
+    <h3>最近紀錄</h3>
+    <div id="recentTable"></div>
+  </section>
 
   <script>
-    // 顯示今天日期
-    const todayElement = document.getElementById("todayDate");
-    const today = new Date();
-    const options = { year: "numeric", month: "long", day: "numeric", weekday: "long" };
-    todayElement.textContent = `📅 今天日期：${today.toLocaleDateString("zh-TW", options)}`;
-
-    // CSV 來源（GitHub）
-    const URL = "https://raw.githubusercontent.com/3311231021/sport/main/sport.csv";
-
-    let allData = [];
+    const form = document.getElementById("recordForm");
+    const tableContainer = document.getElementById("recentTable");
+    let records = JSON.parse(localStorage.getItem("sportRecords") || "[]");
     let chartInstances = {};
 
-    fetch(URL)
-      .then(res => res.text())
-      .then(csv => {
-        const rows = csv.trim().split("\n").map(r => r.split(","));
-        const dataRows = rows.slice(1);
-        allData = dataRows.map(r => ({
-          date: r[0],
-          running: +r[1] || 0,
-          weight: +r[2] || 0,
-          ball: +r[3] || 0,
-          assigned: +r[4] || 0,
-          trail: +r[5] || 0,
-          yoga: +r[6] || 0,
-          other: +r[7] || 0,
-          speed: +r[8] || 0,
-          heart_rate: +r[9] || 0,
-          remark: r[10] || ""
-        })).filter(d => d.date);
-        allData.sort((a, b) => new Date(a.date) - new Date(b.date));
-        renderAll();
-      })
-      .catch(err => {
-        console.error("讀取 CSV 錯誤：", err);
-        alert("⚠️ 無法從 GitHub 載入 sport.csv，請確認網址或檔案是否公開。");
-      });
+    function saveAndRender() {
+      localStorage.setItem("sportRecords", JSON.stringify(records));
+      renderTable();
+      renderCharts();
+    }
 
-    function renderAll() {
-      const sorted = [...allData].sort((a, b) => new Date(b.date) - new Date(a.date));
-      renderRecentTable(sorted.slice(0, 10));
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const formData = new FormData(form);
+      const entry = {
+        date: formData.get("date"),
+        running: +formData.get("running"),
+        strength: +formData.get("strength"),
+        assigned: +formData.get("assigned")
+      };
+      records.push(entry);
+      records.sort((a, b) => new Date(a.date) - new Date(b.date));
+      form.reset();
+      saveAndRender();
+    });
 
-      const monthly = {};
-      allData.forEach(item => {
-        const ym = item.date.slice(0, 7);
-        if (!monthly[ym]) monthly[ym] = { running: 0, weight: 0, ball: 0, assigned: 0, trail: 0, yoga: 0, other: 0 };
-        monthly[ym].running += item.running;
-        monthly[ym].weight += item.weight;
-        monthly[ym].ball += item.ball;
-        monthly[ym].assigned += item.assigned;
-        monthly[ym].trail += item.trail;
-        monthly[ym].yoga += item.yoga;
-        monthly[ym].other += item.other;
-      });
-
-      let labels = Object.keys(monthly).sort();
-      let sums = Object.values(monthly).map(d => ({
-        aerobic: d.running + d.ball + d.trail,
-        assigned: d.assigned,
-        strength: d.weight + d.yoga
-      }));
-
-      if (labels.length > 12) {
-        labels = labels.slice(-12);
-        sums = sums.slice(-12);
+    function renderTable() {
+      const latest = [...records].reverse().slice(0, 10);
+      if (latest.length === 0) {
+        tableContainer.innerHTML = "<p>目前沒有紀錄。</p>";
+        return;
       }
-
-      renderCharts(labels, sums);
-      renderAverages(sums);
+      tableContainer.innerHTML = `
+        <table>
+          <thead><tr><th>日期</th><th>跑步</th><th>肌力</th><th>作業</th></tr></thead>
+          <tbody>
+            ${latest.map(r => `<tr><td>${r.date}</td><td>${r.running}</td><td>${r.strength}</td><td>${r.assigned}</td></tr>`).join("")}
+          </tbody>
+        </table>`;
     }
 
-    function renderRecentTable(data) {
-      const container = document.getElementById("recentTable");
-      container.innerHTML = "";
-      const table = document.createElement("table");
-      const thead = `
-        <thead><tr>
-          <th>日期</th><th>跑步(min)</th><th>肌力訓練</th>
-          <th>球類(min)</th><th>教練指定</th>
-          <th>健行(min)</th><th>瑜伽</th><th>其他</th><th>跑速</th><th>心率</th><th>備註</th>
-        </tr></thead>`;
-      const tbody = data.map(r => `
-        <tr>
-          <td>${r.date}</td><td>${r.running}</td><td>${r.weight}</td>
-          <td>${r.ball}</td><td>${r.assigned}</td><td>${r.trail}</td>
-          <td>${r.yoga}</td><td>${r.other}</td><td>${r.speed}</td>
-          <td>${r.heart_rate}</td><td>${r.remark}</td>
-        </tr>`).join("");
-      table.innerHTML = thead + "<tbody>" + tbody + "</tbody>";
-      container.appendChild(table);
+    function renderCharts() {
+      if (records.length === 0) return;
+      const monthly = {};
+      records.forEach(r => {
+        const ym = r.date.slice(0, 7);
+        if (!monthly[ym]) monthly[ym] = { running: 0, strength: 0, assigned: 0 };
+        monthly[ym].running += r.running;
+        monthly[ym].strength += r.strength;
+        monthly[ym].assigned += r.assigned;
+      });
+      const labels = Object.keys(monthly).sort();
+      const sums = Object.values(monthly);
+
+      drawChart("aerobicChart", "有氧運動時間", labels, sums.map(x => x.running), "#36b9cc");
+      drawChart("assignedChart", "教練指定作業", labels, sums.map(x => x.assigned), "#f6c23e");
+      drawChart("strengthChart", "肌力訓練", labels, sums.map(x => x.strength), "#4e73df");
+
+      const avg = arr => (arr.reduce((a,b)=>a+b,0)/arr.length || 0).toFixed(1);
+      document.getElementById("avgAerobic").textContent = `📊 平均 ${avg(sums.map(x=>x.running))} 分/月`;
+      document.getElementById("avgAssigned").textContent = `📊 平均 ${avg(sums.map(x=>x.assigned))} 次/月`;
+      document.getElementById("avgStrength").textContent = `📊 平均 ${avg(sums.map(x=>x.strength))} 次/月`;
     }
 
-    function renderCharts(labels, sums) {
-      const configs = [
-        { id: "aerobicChart", label: "有氧活動時間", key: "aerobic", color: "#36b9cc" },
-        { id: "assignedChart", label: "教練指定作業", key: "assigned", color: "#f6c23e" },
-        { id: "strengthChart", label: "肌力訓練", key: "strength", color: "#4e73df" }
-      ];
-
-      configs.forEach(({ id, label, key, color }) => {
-        if (chartInstances[id]) chartInstances[id].destroy();
-        const ctx = document.getElementById(id);
-        chartInstances[id] = new Chart(ctx, {
-          type: "bar",
-          data: {
-            labels,
-            datasets: [{
-              label,
-              data: sums.map(x => x[key]),
-              backgroundColor: color + "99",
-              borderColor: color,
-              borderWidth: 1
-            }]
-          },
-          plugins: [ChartDataLabels],
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: { y: { beginAtZero: true } },
-            plugins: {
-              legend: { display: false },
-              datalabels: {
-                color: "#111",
-                anchor: "end",
-                align: "bottom",
-                font: { weight: "bold", size: 12 },
-                formatter: v => v
-              }
-            }
-          }
-        });
+    function drawChart(id, label, labels, data, color) {
+      if (chartInstances[id]) chartInstances[id].destroy();
+      const ctx = document.getElementById(id);
+      chartInstances[id] = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels,
+          datasets: [{ label, data, backgroundColor: color + "99", borderColor: color }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true } }
+        }
       });
     }
 
-    function renderAverages(sums) {
-      const avg = arr => arr.length ? (arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(1) : 0;
-      document.getElementById("avgAerobic").innerText = `📊 平均：${avg(sums.map(x=>x.aerobic))} 分鐘/月`;
-      document.getElementById("avgAssigned").innerText = `📊 平均：${avg(sums.map(x=>x.assigned))} 次/月`;
-      document.getElementById("avgStrength").innerText = `📊 平均：${avg(sums.map(x=>x.strength))} 次/月`;
-    }
+    // 初次載入
+    saveAndRender();
   </script>
 </body>
 </html>
