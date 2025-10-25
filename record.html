@@ -9,7 +9,7 @@
   <style>
     body {
       font-family: "Noto Sans TC", sans-serif;
-      max-width: 700px;
+      max-width: 900px;
       margin: 2rem auto;
       padding: 0 1rem;
       background: #fafafa;
@@ -33,7 +33,7 @@
     .chart-container {
       position: relative;
       width: 100%;
-      aspect-ratio: 4 / 3; /* 讓圖表維持 4:3 比例 */
+      aspect-ratio: 4 / 3; /* 固定圖表比例 4:3 */
     }
 
     canvas {
@@ -41,7 +41,12 @@
       height: 100%;
     }
 
+    .table-wrapper {
+      overflow-x: auto; /* ✅ 可水平捲動 */
+    }
+
     table {
+      min-width: 800px; /* ✅ 確保在手機時可橫向滑動 */
       width: 100%;
       border-collapse: collapse;
       margin-top: 0.5rem;
@@ -52,6 +57,7 @@
       border: 1px solid #ddd;
       padding: 6px;
       text-align: center;
+      white-space: nowrap; /* 不自動換行 */
     }
 
     th {
@@ -70,6 +76,14 @@
 <body>
   <h1>🏃‍♀️ 運動紀錄統計</h1>
   <p class="note" id="todayDate"></p>
+
+  <!-- ✅ 最近 10 筆紀錄 放在最上方 -->
+  <section>
+    <h3>📅 最近 10 筆紀錄</h3>
+    <div class="table-wrapper">
+      <div id="recentTable"></div>
+    </div>
+  </section>
 
   <section>
     <h3>有氧運動時間</h3>
@@ -93,11 +107,6 @@
       <canvas id="strengthChart"></canvas>
     </div>
     <p id="avgStrength"></p>
-  </section>
-
-  <section>
-    <h3>最近 10 筆紀錄</h3>
-    <div id="recentTable"></div>
   </section>
 
   <script>
@@ -159,11 +168,12 @@
         strength: d.strength
       }));
 
+      renderRecentTable(allData.slice(-10).reverse());
       renderCharts(labels, sums);
       renderAverages(sums);
-      renderRecentTable(allData.slice(-10).reverse());
     }
 
+    // ✅ 長條圖內部顯示數值
     function renderCharts(labels, sums) {
       const charts = [
         { id: "aerobicChart", label: "有氧運動時間", key: "aerobic", color: "#36b9cc" },
@@ -181,7 +191,7 @@
             datasets: [{
               label,
               data: sums.map(x => x[key]),
-              backgroundColor: color + "99",
+              backgroundColor: color + "cc",
               borderColor: color,
               borderWidth: 1
             }]
@@ -194,9 +204,9 @@
             plugins: {
               legend: { display: false },
               datalabels: {
-                color: "#000",
-                anchor: "end",
-                align: "top",
+                color: "#fff",
+                anchor: "center",  // ✅ 文字放在長條中間
+                align: "center",
                 font: { weight: "bold", size: 12 },
                 formatter: v => v
               }
@@ -206,6 +216,7 @@
       });
     }
 
+    // ✅ 最近 10 筆紀錄表格
     function renderRecentTable(data) {
       const container = document.getElementById("recentTable");
       container.innerHTML = `
