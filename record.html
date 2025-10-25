@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>運動統計</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
   <style>
     body {
       font-family: "Noto Sans TC", sans-serif;
@@ -33,24 +32,6 @@
     canvas {
       width: 100%;
       max-height: 250px;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 0.5rem;
-    }
-
-    th, td {
-      border: 1px solid #ddd;
-      padding: 6px;
-      text-align: center;
-      font-size: 0.9rem;
-    }
-
-    th {
-      background: #0077b6;
-      color: #fff;
     }
 
     p.note {
@@ -83,25 +64,30 @@
     <p id="avgStrength"></p>
   </section>
 
-  <section>
-    <h3>最近紀錄</h3>
-    <div id="recentTable"></div>
-  </section>
-
   <script>
+    // 顯示今天日期
     const todayElement = document.getElementById("todayDate");
     const today = new Date();
-    todayElement.textContent = `📅 ${today.toLocaleDateString("zh-TW", {year: "numeric", month: "long", day: "numeric", weekday: "long"})}`;
+    todayElement.textContent = `📅 ${today.toLocaleDateString("zh-TW", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      weekday: "long"
+    })}`;
 
+    // CSV 來源
     const URL = "https://raw.githubusercontent.com/3311231021/sport/main/sport.csv";
+
     let allData = [];
     let chartInstances = {};
 
+    // 讀取 GitHub 上的 CSV
     fetch(URL)
       .then(res => res.text())
       .then(csv => {
         const rows = csv.trim().split("\n").map(r => r.split(","));
-        const dataRows = rows.slice(1);
+        const dataRows = rows.slice(1); // 跳過表頭
+
         allData = dataRows.map(r => ({
           date: r[0],
           running: +r[1] || 0,
@@ -109,18 +95,25 @@
           ball: +r[3] || 0,
           assigned: +r[4] || 0,
           trail: +r[5] || 0,
-          yoga: +r[6] || 0
+          yoga: +r[6] || 0,
+          other: +r[7] || 0,
+          speed: +r[8] || 0,
+          heart_rate: +r[9] || 0,
+          remark: r[10] || ""
         })).filter(d => d.date);
+
         allData.sort((a, b) => new Date(a.date) - new Date(b.date));
         renderAll();
       })
       .catch(() => alert("⚠️ 無法讀取 sport.csv"));
 
+    // 整體渲染
     function renderAll() {
       const monthly = {};
       allData.forEach(d => {
         const ym = d.date.slice(0, 7);
-        if (!monthly[ym]) monthly[ym] = { running: 0, ball: 0, trail: 0, assigned: 0, strength: 0, yoga: 0 };
+        if (!monthly[ym])
+          monthly[ym] = { running: 0, ball: 0, trail: 0, assigned: 0, strength: 0, yoga: 0 };
         monthly[ym].running += d.running;
         monthly[ym].ball += d.ball;
         monthly[ym].trail += d.trail;
@@ -136,10 +129,10 @@
       }));
 
       renderCharts(labels, sums);
-      renderRecentTable(allData.slice(-7).reverse());
       renderAverages(sums);
     }
 
+    // 繪製三個圖表
     function renderCharts(labels, sums) {
       const charts = [
         { id: "aerobicChart", label: "有氧運動時間", key: "aerobic", color: "#36b9cc" },
@@ -172,24 +165,15 @@
       });
     }
 
-    function renderRecentTable(data) {
-      const container = document.getElementById("recentTable");
-      container.innerHTML = `
-        <table>
-          <thead><tr><th>日期</th><th>跑步</th><th>肌力</th><th>球類</th><th>作業</th></tr></thead>
-          <tbody>
-            ${data.map(r => `<tr><td>${r.date}</td><td>${r.running}</td><td>${r.weight}</td><td>${r.ball}</td><td>${r.assigned}</td></tr>`).join("")}
-          </tbody>
-        </table>`;
-    }
-
+    // 平均值顯示
     function renderAverages(sums) {
-      const avg = arr => arr.reduce((a,b)=>a+b,0) / arr.length || 0;
-      document.getElementById("avgAerobic").textContent = `📊 平均：${avg(sums.map(x=>x.aerobic)).toFixed(1)} 分鐘/月`;
-      document.getElementById("avgAssigned").textContent = `📊 平均：${avg(sums.map(x=>x.assigned)).toFixed(1)} 次/月`;
-      document.getElementById("avgStrength").textContent = `📊 平均：${avg(sums.map(x=>x.strength)).toFixed(1)} 次/月`;
+      const avg = arr => arr.length ? (arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(1) : 0;
+      document.getElementById("avgAerobic").textContent = `📊 平均：${avg(sums.map(x=>x.aerobic))} 分鐘/月`;
+      document.getElementById("avgAssigned").textContent = `📊 平均：${avg(sums.map(x=>x.assigned))} 次/月`;
+      document.getElementById("avgStrength").textContent = `📊 平均：${avg(sums.map(x=>x.strength))} 次/月`;
     }
   </script>
 </body>
 </html>
+
 
