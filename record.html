@@ -130,4 +130,116 @@
           yoga: +r[6] || 0,
           other: +r[7] || 0,
           speed: +r[8] || 0,
-          heart_rate: +r[9]()_
+          heart_rate: +r[9] || 0,
+          remark: r[10] || ""
+        })).filter(d => d.date);
+
+        allData.sort((a, b) => new Date(a.date) - new Date(b.date));
+        renderAll();
+      })
+      .catch(() => alert("⚠️ 無法讀取 sport.csv"));
+
+    function renderAll() {
+      const monthly = {};
+      allData.forEach(d => {
+        const ym = d.date.slice(0, 7);
+        if (!monthly[ym])
+          monthly[ym] = { running: 0, ball: 0, trail: 0, assigned: 0, strength: 0, yoga: 0 };
+        monthly[ym].running += d.running;
+        monthly[ym].ball += d.ball;
+        monthly[ym].trail += d.trail;
+        monthly[ym].assigned += d.assigned;
+        monthly[ym].strength += d.weight + d.yoga;
+      });
+
+      let labels = Object.keys(monthly).sort();
+      let sums = Object.values(monthly).map(d => ({
+        aerobic: d.running + d.ball + d.trail,
+        assigned: d.assigned,
+        strength: d.strength
+      }));
+
+      renderCharts(labels, sums);
+      renderAverages(sums);
+      renderRecentTable(allData.slice(-10).reverse());
+    }
+
+    function renderCharts(labels, sums) {
+      const charts = [
+        { id: "aerobicChart", label: "有氧運動時間", key: "aerobic", color: "#36b9cc" },
+        { id: "assignedChart", label: "教練指定作業", key: "assigned", color: "#f6c23e" },
+        { id: "strengthChart", label: "肌力訓練", key: "strength", color: "#4e73df" }
+      ];
+
+      charts.forEach(({ id, label, key, color }) => {
+        if (chartInstances[id]) chartInstances[id].destroy();
+        const ctx = document.getElementById(id);
+        chartInstances[id] = new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels,
+            datasets: [{
+              label,
+              data: sums.map(x => x[key]),
+              backgroundColor: color + "99",
+              borderColor: color,
+              borderWidth: 1
+            }]
+          },
+          plugins: [ChartDataLabels],
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true } },
+            plugins: {
+              legend: { display: false },
+              datalabels: {
+                color: "#000",
+                anchor: "end",
+                align: "top",
+                font: { weight: "bold", size: 12 },
+                formatter: v => v
+              }
+            }
+          }
+        });
+      });
+    }
+
+    function renderRecentTable(data) {
+      const container = document.getElementById("recentTable");
+      container.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>日期</th><th>跑步</th><th>肌力</th><th>球類</th>
+              <th>教練</th><th>健行</th><th>瑜伽</th><th>心率</th><th>備註</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.map(r => `
+              <tr>
+                <td>${r.date}</td>
+                <td>${r.running}</td>
+                <td>${r.weight}</td>
+                <td>${r.ball}</td>
+                <td>${r.assigned}</td>
+                <td>${r.trail}</td>
+                <td>${r.yoga}</td>
+                <td>${r.heart_rate}</td>
+                <td>${r.remark}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>`;
+    }
+
+    function renderAverages(sums) {
+      const avg = arr => arr.length ? (arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(1) : 0;
+      document.getElementById("avgAerobic").textContent = `📊 平均：${avg(sums.map(x=>x.aerobic))} 分鐘/月`;
+      document.getElementById("avgAssigned").textContent = `📊 平均：${avg(sums.map(x=>x.assigned))} 次/月`;
+      document.getElementById("avgStrength").textContent = `📊 平均：${avg(sums.map(x=>x.strength))} 次/月`;
+    }
+  </script>
+</body>
+</html>
