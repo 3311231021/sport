@@ -9,17 +9,20 @@
   <style>
     body {
       font-family: "Noto Sans TC", sans-serif;
-      max-width: 1200px;
-      margin: 2rem auto;
+      width: 100%;          /* 手機滿版 */
+      max-width: 900px;     /* 桌面不超過900px */
+      margin: 0 auto;
       padding: 0 1rem;
       background: #fafafa;
       color: #333;
+      box-sizing: border-box;
     }
 
     h1 {
       text-align: center;
       color: #0077b6;
       font-size: 1.8rem;
+      margin-top: 2rem;
     }
 
     section {
@@ -30,23 +33,10 @@
       box-shadow: 0 0 6px rgba(0, 0, 0, 0.1);
     }
 
-    .chart-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* ✅ 響應式三欄 */
-      gap: 1rem;
-    }
-
-    .chart-box {
-      background: #fff;
-      border-radius: 8px;
-      padding: 0.8rem;
-      box-shadow: 0 0 6px rgba(0, 0, 0, 0.1);
-    }
-
     .chart-container {
       position: relative;
       width: 100%;
-      aspect-ratio: 4 / 3; /* ✅ 固定比例 */
+      aspect-ratio: 4 / 3;
     }
 
     canvas {
@@ -90,7 +80,6 @@
   <h1>🏃‍♀️ 運動紀錄統計</h1>
   <p class="note" id="todayDate"></p>
 
-  <!-- ✅ 最近 10 筆紀錄 -->
   <section>
     <h3>📅 最近 10 筆紀錄</h3>
     <div class="table-wrapper">
@@ -98,28 +87,28 @@
     </div>
   </section>
 
-  <!-- ✅ 三張圖並排 -->
   <section>
-    <h3>📊 月統計圖表</h3>
-    <div class="chart-grid">
-      <div class="chart-box">
-        <h4>有氧運動時間</h4>
-        <div class="chart-container"><canvas id="aerobicChart"></canvas></div>
-        <p id="avgAerobic"></p>
-      </div>
-
-      <div class="chart-box">
-        <h4>教練指定作業次數</h4>
-        <div class="chart-container"><canvas id="assignedChart"></canvas></div>
-        <p id="avgAssigned"></p>
-      </div>
-
-      <div class="chart-box">
-        <h4>肌力訓練次數</h4>
-        <div class="chart-container"><canvas id="strengthChart"></canvas></div>
-        <p id="avgStrength"></p>
-      </div>
+    <h3>有氧運動時間</h3>
+    <div class="chart-container">
+      <canvas id="aerobicChart"></canvas>
     </div>
+    <p id="avgAerobic"></p>
+  </section>
+
+  <section>
+    <h3>教練指定作業次數</h3>
+    <div class="chart-container">
+      <canvas id="assignedChart"></canvas>
+    </div>
+    <p id="avgAssigned"></p>
+  </section>
+
+  <section>
+    <h3>肌力訓練次數</h3>
+    <div class="chart-container">
+      <canvas id="strengthChart"></canvas>
+    </div>
+    <p id="avgStrength"></p>
   </section>
 
   <script>
@@ -152,7 +141,7 @@
           yoga: +r[6] || 0,
           other: +r[7] || 0,
           speed: +r[8] || 0,
-          heart_rate: +r[9] || 0,
+          heart_rate: r[9] ? +r[9] : "",  // 空值顯示空白
           remark: r[10] || ""
         })).filter(d => d.date);
 
@@ -186,7 +175,6 @@
       renderAverages(sums);
     }
 
-    // ✅ 長條圖內部顯示數值
     function renderCharts(labels, sums) {
       const charts = [
         { id: "aerobicChart", label: "有氧運動時間", key: "aerobic", color: "#36b9cc" },
@@ -229,7 +217,6 @@
       });
     }
 
-    // ✅ 最近 10 筆紀錄表格
     function renderRecentTable(data) {
       const container = document.getElementById("recentTable");
       container.innerHTML = `
@@ -267,4 +254,3 @@
   </script>
 </body>
 </html>
-
