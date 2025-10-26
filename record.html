@@ -9,8 +9,8 @@
   <style>
     body {
       font-family: "Noto Sans TC", sans-serif;
-      width: 100%;          /* 手機滿版 */
-      max-width: 900px;     /* 桌面不超過900px */
+      width: 100%;
+      max-width: 900px;
       margin: 0 auto;
       padding: 0 1rem;
       background: #fafafa;
@@ -45,12 +45,12 @@
     }
 
     .table-wrapper {
-      overflow-x: auto;
+      overflow-x: auto;  /* ✅ 手機可水平捲動 */
+      -webkit-overflow-scrolling: touch; /* iOS 滑動順暢 */
     }
 
     table {
-      min-width: 800px;
-      width: 100%;
+      min-width: 900px;   /* 固定寬度，手機可滑動 */
       border-collapse: collapse;
       margin-top: 0.5rem;
       font-size: 0.9rem;
@@ -112,7 +112,6 @@
   </section>
 
   <script>
-    // 顯示今天日期
     const todayElement = document.getElementById("todayDate");
     const today = new Date();
     todayElement.textContent = `📅 ${today.toLocaleDateString("zh-TW", {
