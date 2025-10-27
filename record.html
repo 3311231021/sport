@@ -6,22 +6,17 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
   <style>
-    body {
-      font-family: "Segoe UI", Arial, sans-serif;
-      margin: 20px;
-      background-color: #fafafa;
-      color: #333;
-    }
-    h1, h2 { text-align: center; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 25px; background:#fff; box-shadow:0 2px 8px rgba(0,0,0,0.1); border-radius:10px; overflow:hidden; }
-    th, td { border:1px solid #ddd; padding:8px; text-align:center; font-size:13px; }
-    th { background:#f3f3f3; }
-    .chart-container { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:20px; }
-    .chart-box { background:#fff; border-radius:12px; padding:10px; box-shadow:0 2px 8px rgba(0,0,0,0.1); text-align:center; }
-    .chart-box h3 { font-size:15px; margin-bottom:6px; }
-    .avg-box { font-size:13px; margin-top:4px; color:#555; }
-    canvas { width:100% !important; height:220px !important; }
-    @media (max-width:600px) { canvas { height:160px !important; } }
+    body { font-family:"Segoe UI",Arial,sans-serif; margin:20px; background:#fafafa; color:#333; }
+    h1,h2{text-align:center;}
+    table{width:100%;border-collapse:collapse;margin-bottom:25px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,0.1);border-radius:10px;overflow:hidden;}
+    th,td{border:1px solid #ddd;padding:8px;text-align:center;font-size:13px;}
+    th{background:#f3f3f3;}
+    .chart-container{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;}
+    .chart-box{background:#fff;border-radius:12px;padding:10px;box-shadow:0 2px 8px rgba(0,0,0,0.1);text-align:center;}
+    .chart-box h3{font-size:15px;margin-bottom:6px;}
+    .avg-box{font-size:13px;margin-top:4px;color:#555;}
+    canvas{width:100% !important;height:220px !important;}
+    @media (max-width:600px){canvas{height:160px !important;}}
   </style>
 </head>
 <body>
@@ -49,25 +44,46 @@
   </div>
 
   <script>
-    // ======= 假資料 =======
-    const allData = [
-      { date:"2025-10-01", running:30, weight:10, ball:20, assigned:5, trail:15, yoga:5, other:0 },
-      { date:"2025-10-02", running:25, weight:12, ball:15, assigned:6, trail:10, yoga:0, other:5 },
-      { date:"2025-10-03", running:40, weight:8, ball:0, assigned:7, trail:20, yoga:10, other:0 },
-      { date:"2025-09-28", running:20, weight:5, ball:10, assigned:4, trail:5, yoga:5, other:2 },
-      { date:"2025-09-25", running:35, weight:9, ball:5, assigned:3, trail:15, yoga:0, other:0 }
-    ];
+    let allData = [];
 
-    function renderRecentTable(data) {
-      const container = document.getElementById("recentTable");
-      container.innerHTML = "";
-      const table = document.createElement("table");
-      const thead = `
+    // ======= 讀取 sport.csv =======
+    fetch("sport.csv")
+      .then(res => res.text())
+      .then(text => {
+        // 解析 CSV，假設第一列是欄位名稱，逗號分隔
+        const lines = text.trim().split("\n");
+        const headers = lines[0].split(",");
+        allData = lines.slice(1).map(line=>{
+          const cols = line.split(",");
+          return {
+            date: cols[0],
+            running: +cols[1] || 0,
+            weight: +cols[2] || 0,
+            ball: +cols[3] || 0,
+            assigned: +cols[4] || 0,
+            trail: +cols[5] || 0,
+            yoga: +cols[6] || 0,
+            other: +cols[7] || 0
+          };
+        });
+
+        renderAll();
+      })
+      .catch(err=>{
+        console.error("讀取 CSV 錯誤:", err);
+        alert("無法讀取 sport.csv，請確認檔案存在同一資料夾並命名正確。");
+      });
+
+    function renderRecentTable(data){
+      const container=document.getElementById("recentTable");
+      container.innerHTML="";
+      const table=document.createElement("table");
+      const thead=`
         <thead><tr>
           <th>日期</th><th>跑步(min)</th><th>肌力訓練</th><th>球類(min)</th>
           <th>教練指定</th><th>健行(min)</th><th>瑜伽</th><th>其他</th>
         </tr></thead>`;
-      const tbody = data.map(r => `
+      const tbody=data.map(r=>`
         <tr>
           <td>${r.date}</td>
           <td>${r.running}</td>
@@ -77,44 +93,34 @@
           <td>${r.trail}</td>
           <td>${r.yoga}</td>
           <td>${r.other}</td>
-        </tr>
-      `).join("");
-      table.innerHTML = thead + "<tbody>" + tbody + "</tbody>";
+        </tr>`).join("");
+      table.innerHTML=thead+"<tbody>"+tbody+"</tbody>";
       container.appendChild(table);
     }
 
-    function renderCharts(labels, sums) {
-      const chartDefs = [
-        { id:"aerobicChart", key:"aerobic", label:"有氧活動", color:"#36b9cc" },
-        { id:"assignedChart", key:"assigned", label:"教練指定", color:"#f6c23e" },
-        { id:"strengthChart", key:"strength", label:"肌力訓練", color:"#4e73df" }
+    function renderCharts(labels,sums){
+      const chartDefs=[
+        {id:"aerobicChart",key:"aerobic",label:"有氧活動",color:"#36b9cc"},
+        {id:"assignedChart",key:"assigned",label:"教練指定",color:"#f6c23e"},
+        {id:"strengthChart",key:"strength",label:"肌力訓練",color:"#4e73df"}
       ];
 
       chartDefs.forEach(({id,key,label,color})=>{
-        const ctx = document.getElementById(id);
+        const ctx=document.getElementById(id);
         new Chart(ctx,{
           type:"bar",
-          data:{
-            labels,
-            datasets:[{
-              label,
-              data:sums.map(x=>x[key]),
-              backgroundColor: color + "99",
-              borderColor: color,
-              borderWidth:1
-            }]
-          },
+          data:{labels,datasets:[{label,data:sums.map(x=>x[key]),backgroundColor:color+"99",borderColor:color,borderWidth:1}]},
           plugins:[ChartDataLabels],
           options:{
             responsive:true,
-            scales:{ y:{ beginAtZero:true } },
+            scales:{y:{beginAtZero:true}},
             plugins:{
-              legend:{ display:false },
+              legend:{display:false},
               datalabels:{
                 color:'#111',
                 anchor:'center',
                 align:'center',
-                font:{ weight:'bold', size:12 },
+                font:{weight:'bold',size:12},
                 formatter:value=>value>0?value:''
               }
             }
@@ -123,44 +129,40 @@
       });
     }
 
-    function renderAverages(sums) {
-      const avg = arr => arr.length ? (arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(1) : 0;
-      document.getElementById("avgAerobic").innerText = `📊 平均：${avg(sums.map(x=>x.aerobic))} 分鐘/月`;
-      document.getElementById("avgAssigned").innerText = `📊 平均：${avg(sums.map(x=>x.assigned))} 次/月`;
-      document.getElementById("avgStrength").innerText = `📊 平均：${avg(sums.map(x=>x.strength))} 次/月`;
+    function renderAverages(sums){
+      const avg=arr=>arr.length?(arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(1):0;
+      document.getElementById("avgAerobic").innerText=`📊 平均：${avg(sums.map(x=>x.aerobic))} 分鐘/月`;
+      document.getElementById("avgAssigned").innerText=`📊 平均：${avg(sums.map(x=>x.assigned))} 次/月`;
+      document.getElementById("avgStrength").innerText=`📊 平均：${avg(sums.map(x=>x.strength))} 次/月`;
     }
 
-    function renderAll() {
-      // 最近 10 筆表格
-      const sorted = [...allData].sort((a,b)=>new Date(b.date)-new Date(a.date));
+    function renderAll(){
+      const sorted=[...allData].sort((a,b)=>new Date(b.date)-new Date(a.date));
       renderRecentTable(sorted.slice(0,10));
 
-      // 計算每月累計
-      const monthly = {};
+      const monthly={};
       allData.forEach(item=>{
-        const ym = item.date.slice(0,7);
-        if(!monthly[ym]) monthly[ym]={ running:0, weight:0, ball:0, assigned:0, trail:0, yoga:0, other:0 };
-        monthly[ym].running += item.running;
-        monthly[ym].weight += item.weight;
-        monthly[ym].ball += item.ball;
-        monthly[ym].assigned += item.assigned;
-        monthly[ym].trail += item.trail;
-        monthly[ym].yoga += item.yoga;
-        monthly[ym].other += item.other;
+        const ym=item.date.slice(0,7);
+        if(!monthly[ym]) monthly[ym]={running:0,weight:0,ball:0,assigned:0,trail:0,yoga:0,other:0};
+        monthly[ym].running+=item.running;
+        monthly[ym].weight+=item.weight;
+        monthly[ym].ball+=item.ball;
+        monthly[ym].assigned+=item.assigned;
+        monthly[ym].trail+=item.trail;
+        monthly[ym].yoga+=item.yoga;
+        monthly[ym].other+=item.other;
       });
 
-      const labels = Object.keys(monthly).sort();
-      const sums = Object.values(monthly).map(d=>({
-        aerobic:d.running + d.ball + d.trail,
+      const labels=Object.keys(monthly).sort();
+      const sums=Object.values(monthly).map(d=>({
+        aerobic:d.running+d.ball+d.trail,
         assigned:d.assigned,
-        strength:d.weight + d.yoga
+        strength:d.weight+d.yoga
       }));
 
       renderCharts(labels,sums);
       renderAverages(sums);
     }
-
-    renderAll();
   </script>
 </body>
 </html>
