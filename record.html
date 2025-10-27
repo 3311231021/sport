@@ -221,4 +221,9 @@
     function renderAverages(sums) {
       const avg = arr => arr.length ? (arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(1) : 0;
       document.getElementById("avgAerobic").innerText = `📊 平均：${avg(sums.map(x=>x.aerobic))} 分鐘/月`;
-      document.get
+      document.getElementById("avgAssigned").innerText = `📊 平均：${avg(sums.map(x=>x.assigned))} 次/月`;
+      document.getElementById("avgStrength").innerText = `📊 平均：${avg(sums.map(x=>x.strength))} 次/月`;
+    }
+  </script>
+</body>
+</html>
