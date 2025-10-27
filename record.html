@@ -3,9 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <title>🏋️‍♀️ 運動記錄 Dashboard</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+
+  <!-- ✅ 修正版：使用 Chart.js v3.9.1 + datalabels v2.2.0 -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
   <style>
     body {
       font-family: "Segoe UI", Arial, sans-serif;
@@ -152,21 +155,21 @@
         .then(csvText => {
           const results = Papa.parse(csvText, { header: true, skipEmptyLines: true });
           allData = results.data.map(r => {
-            const paceStr = r["跑速"] || r.speed || "";
+            const paceStr = r["跑速"] || "";
             const paceSec = parsePace(paceStr);
             return {
-              date: r["日期"] || r.date,
-              running: +r["跑步(min)"] || +r.running || 0,
-              weight: +r["肌力訓練"] || +r.weight || 0,
-              ball: +r["球類(min)"] || +r.ball || 0,
-              assigned: +r["教練指定"] || +r.assigned || 0,
-              trail: +r["健行(min)"] || +r.trail || 0,
-              yoga: +r["瑜伽"] || +r.yoga || 0,
-              other: +r["其他"] || +r.other || 0,
-              speed: paceStr,      // 顯示用格式
-              speedSec: paceSec,   // 秒數（計算用）
-              heart_rate: +r["心率"] || +r.heart_rate || "",
-              remark: r["備註"] || r.remark || ""
+              date: r["日期"],
+              running: +r["跑步(min)"] || 0,
+              weight: +r["肌力訓練"] || 0,
+              ball: +r["球類(min)"] || 0,
+              assigned: +r["教練指定"] || 0,
+              trail: +r["健行(min)"] || 0,
+              yoga: +r["瑜伽"] || 0,
+              other: +r["其他"] || 0,
+              speed: paceStr,
+              speedSec: paceSec,
+              heart_rate: +r["心率"] || "",
+              remark: r["備註"] || ""
             };
           }).filter(d => d.date);
 
