@@ -14,19 +14,50 @@
     }
     h1 { text-align: center; margin-bottom: 5px; }
     #todayDate { text-align: center; font-size: 14px; color: #666; margin-bottom: 20px; }
-    table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 25px; }
+
+    /* 最近紀錄表格 */
+    #recentTable { overflow-x: auto; margin-bottom: 25px; }
+    table {
+      width: 100%;
+      min-width: 900px;
+      border-collapse: collapse;
+      background: #fff;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
     th, td { border: 1px solid #ddd; padding: 8px; text-align: center; font-size: 13px; }
     th { background-color: #f3f3f3; }
-    .chart-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; align-items: start; }
-    .chart-box { background: #fff; border-radius: 12px; padding: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center; }
+
+    /* 統計圖區塊 */
+    .chart-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+      justify-items: center;
+      align-items: stretch;
+    }
+    .chart-box {
+      background: #fff;
+      border-radius: 12px;
+      padding: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      text-align: center;
+      width: 100%;
+      max-width: 500px;
+    }
     .chart-box h3 { font-size: 15px; margin-bottom: 6px; }
     .avg-box { font-size: 13px; margin-top: 4px; color: #555; }
-    canvas { width: 100% !important; height: 220px !important; }
+
+    canvas {
+      width: 100% !important;
+      aspect-ratio: 4 / 3 !important;
+    }
+
     @media (max-width: 600px) {
       body { margin: 10px; }
       h1 { font-size: 18px; }
       th, td { font-size: 11px; }
-      canvas { height: 160px !important; }
     }
   </style>
 </head>
@@ -90,7 +121,6 @@
         });
 
         allData.sort((a, b) => new Date(a.date) - new Date(b.date));
-
         renderAll();
       })
       .catch(err => {
@@ -105,7 +135,8 @@
 
       const monthly = {};
       allData.forEach(item => {
-        const ym = item.date.slice(0, 7);
+        // 這裡修正，支援 2025/10/27 或 2025-10-27 皆可
+        const ym = item.date.replace(/\//g, '-').slice(0, 7);
         if (!monthly[ym]) monthly[ym] = { running: 0, weight: 0, ball: 0, assigned: 0, trail: 0, yoga: 0, other: 0 };
         monthly[ym].running += item.running;
         monthly[ym].weight += item.weight;
@@ -185,11 +216,18 @@
           },
           plugins: [ChartDataLabels],
           options: {
+            aspectRatio: 4/3,
             responsive: true,
             scales: { y: { beginAtZero: true } },
             plugins: {
               legend: { display: false },
-              datalabels: { color: '#111', anchor: 'end', align: 'bottom', font: { weight: 'bold', size: 12 }, formatter: value => value }
+              datalabels: {
+                color: '#111',
+                anchor: 'center',
+                align: 'center',
+                font: { weight: 'bold', size: 12 },
+                formatter: value => value
+              }
             }
           }
         });
