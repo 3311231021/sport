@@ -1,147 +1,67 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-TW">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Workout 運動記錄 - 響應式+數字顯示</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- 載入 datalabels 插件 -->
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+  <title>🏋️‍♀️ Workout 運動記錄</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
   <style>
     body {
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #fff;
-      color: #222;
-      margin: 20px auto;
-      max-width: 960px;
-      padding: 0 12px;
-    }
-    h1 {
+      font-family: "Segoe UI", Arial, sans-serif;
+      margin: 20px;
+      background-color: #fafafa;
       color: #333;
-      font-weight: 700;
-      font-size: 24px;
-      margin-bottom: 4px;
-      text-align: center;
     }
-    h1 .emoji {
-      margin-right: 8px;
-    }
-    #todayDate {
-      font-size: 14px;
-      color: #666;
-      margin: 0 0 20px 0;
-      text-align: center;
-    }
-    h2 {
-      margin-left: 4px;
-      font-weight: 600;
-      margin-bottom: 8px;
-      font-size: 16px;
-    }
+    h1 { text-align: center; margin-bottom: 5px; }
+    #todayDate { text-align: center; font-size: 14px; color: #666; margin-bottom: 20px; }
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 13px;
-      color: #222;
-      margin-bottom: 25px;
-      border: 1px solid #ccc;
-      box-shadow: 0 0 8px #eee;
-      border-radius: 6px;
+      background: #fff;
+      border-radius: 10px;
       overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 25px;
     }
     th, td {
-      border: 1px solid #ccc;
-      padding: 6px 8px;
+      border: 1px solid #ddd;
+      padding: 8px;
       text-align: center;
+      font-size: 13px;
     }
-    th {
-      background: #f9f9f9;
-      font-weight: 600;
-    }
-    /* 響應式調整 */
+    th { background-color: #f3f3f3; }
     .chart-container {
-      display: flex;
-      gap: 18px;
-      justify-content: space-between;
-      margin-top: 30px;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      align-items: start;
     }
     .chart-box {
-      flex: 1 1 280px;
-      background: #fefefe;
+      background: #fff;
       border-radius: 12px;
-      padding: 12px 10px 18px;
-      box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
+      padding: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
       text-align: center;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      max-width: 100%;
-      min-width: 280px;
-      margin-bottom: 20px;
     }
-    .chart-box h3 {
-      font-weight: 600;
-      font-size: 15px;
-      margin-bottom: 12px;
-    }
-    canvas {
-      max-width: 100%;
-      height: 220px !important;
-    }
-    .avg-box {
-      margin-top: 12px;
-      font-size: 13px;
-      color: #555;
-      font-weight: 600;
-      user-select: none;
-    }
-    @media (max-width: 700px) {
-      .chart-container {
-        flex-direction: column;
-        gap: 25px;
-      }
-      .chart-box {
-        min-width: auto;
-      }
+    .chart-box h3 { font-size: 15px; margin-bottom: 6px; }
+    .avg-box { font-size: 13px; margin-top: 4px; color: #555; }
+    canvas { width: 100% !important; height: 220px !important; }
+    @media (max-width: 600px) {
+      body { margin: 10px; }
+      h1 { font-size: 18px; }
+      th, td { font-size: 11px; }
+      canvas { height: 160px !important; }
     }
   </style>
 </head>
 <body>
-  <h1><span class="emoji">🏋️‍♀️</span>Workout 運動記錄</h1>
+  <h1>🏋️‍♀️ Workout 運動記錄</h1>
   <div id="todayDate"></div>
 
-  <h2>📅 最近 10 筆運動紀錄</h2>
-  <table id="recordTable">
-    <thead>
-      <tr>
-        <th>日期</th>
-        <th>跑步(min)</th>
-        <th>肌力訓練</th>
-        <th>球類(min)</th>
-        <th>教練指定</th>
-        <th>健行(min)</th>
-        <th>瑜伽</th>
-        <th>其他</th>
-        <th>跑速</th>
-        <th>心率</th>
-        <th>備註</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr><td>2025-10-25</td><td>0</td><td>0</td><td>0</td><td>0</td><td>90</td><td>0</td><td>0</td><td>17'44"</td><td>112</td><td>大坑步道/瘦小腿</td></tr>
-      <tr><td>2025-10-24</td><td>0</td><td>0</td><td>0</td><td>1</td><td>60</td><td>0</td><td>0</td><td>12'54"</td><td>118</td><td>腳趾活動/瘦小腿</td></tr>
-      <tr><td>2025-10-23</td><td>0</td><td>0</td><td>0</td><td>1</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>腳趾活動/呼吸+核心</td></tr>
-      <tr><td>2025-10-22</td><td>0</td><td>0</td><td>0</td><td>1</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>呼吸+核心/單腳抬臀/滾筒大腿</td></tr>
-      <tr><td>2025-10-21</td><td>30</td><td>0</td><td>0</td><td>1</td><td>0</td><td>0</td><td>0</td><td>7'18"</td><td>144</td><td></td></tr>
-      <tr><td>2025-10-20</td><td>30</td><td>0</td><td>0</td><td>1</td><td>0</td><td>0</td><td>0</td><td>7'04"</td><td>137</td><td></td></tr>
-      <tr><td>2025-10-19</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td></td></tr>
-      <tr><td>2025-10-18</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td></td></tr>
-      <tr><td>2025-10-17</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td></td></tr>
-      <tr><td>2025-10-16</td><td>40</td><td>0</td><td>0</td><td>1</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td></td></tr>
-    </tbody>
-  </table>
+  <h2>🗓️ 最近 10 筆運動紀錄</h2>
+  <div id="recentTable"></div>
 
   <div class="chart-container">
     <div class="chart-box">
@@ -163,102 +83,142 @@
 
   <script>
     // 顯示今天日期
+    const todayElement = document.getElementById("todayDate");
     const today = new Date();
-    const formatted = today.toLocaleDateString("zh-TW", {
-      year: "numeric", month: "2-digit", day: "2-digit", weekday: "short"
+    const options = { year: "numeric", month: "long", day: "numeric", weekday: "long" };
+    todayElement.textContent = `📅 今天日期：${today.toLocaleDateString("zh-TW", options)}`;
+
+    let allData = [];
+    let chartInstances = {};
+
+    // 讀取 sport.csv
+    Papa.parse("sport.csv", {
+      download: true,
+      header: true,
+      skipEmptyLines: true,
+      complete: function(results) {
+        allData = results.data.map(r => {
+          const paceStr = r["跑速"] || "";
+          const paceSec = parsePace(paceStr);
+          return {
+            date: r["日期"] || "",
+            running: +r["跑步(min)"] || 0,
+            weight: +r["肌力訓練"] || 0,
+            ball: +r["球類(min)"] || 0,
+            assigned: +r["教練指定"] || 0,
+            trail: +r["健行(min)"] || 0,
+            yoga: +r["瑜伽"] || 0,
+            other: +r["其他"] || 0,
+            speed: paceStr,
+            speedSec: paceSec,
+            heart_rate: +r["心率"] || 0,
+            remark: r["備註"] || ""
+          };
+        }).filter(d => d.date);
+
+        allData.sort((a, b) => new Date(a.date) - new Date(b.date));
+        renderAll();
+      }
     });
-    document.getElementById("todayDate").textContent = "📅 今天日期：" + formatted;
 
-    // 模擬月度資料
-    const aerobicData = [650, 1025, 700, 605];
-    const assignedData = [19, 20, 12, 18];
-    const strengthData = [9, 39, 3, 3];
-    const monthLabels = ["2025-07", "2025-08", "2025-09", "2025-10"];
-
-    // 平均值計算函數
-    function calcAverage(arr) {
-      if (!arr.length) return 0;
-      return (arr.reduce((a,b) => a + b, 0) / arr.length).toFixed(1);
+    function parsePace(str) {
+      const m = str.match(/(\d+):(\d+)/);
+      return m ? (+m[1])*60 + (+m[2]) : 0;
     }
 
-    // 顯示平均值
-    document.getElementById("avgAerobic").textContent = `📊 平均：${calcAverage(aerobicData)} 分鐘/月`;
-    document.getElementById("avgAssigned").textContent = `📊 平均：${calcAverage(assignedData)} 次/月`;
-    document.getElementById("avgStrength").textContent = `📊 平均：${calcAverage(strengthData)} 次/月`;
+    function renderAll() {
+      const sorted = [...allData].sort((a, b) => new Date(b.date) - new Date(a.date));
+      const recent10 = sorted.slice(0, 10);
+      renderRecentTable(recent10);
 
-    // 通用圖表設定
-    const commonOptions = {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        y: {
-          beginAtZero: true,
-          ticks: { stepSize: 5 }
-        }
-      },
-      plugins: {
-        legend: { display: false },
-        datalabels: {         // 啟用並設定顯示數字
-          color: '#444',
-          anchor: 'end',
-          align: 'top',
-          font: {
-            weight: '600',
-            size: 12
+      // 累計每個月
+      const monthly = {};
+      allData.forEach(item => {
+        const ym = item.date.slice(0,7);
+        if (!monthly[ym]) monthly[ym] = { running:0, weight:0, ball:0, assigned:0, trail:0, yoga:0, other:0 };
+        monthly[ym].running += item.running;
+        monthly[ym].weight += item.weight;
+        monthly[ym].ball += item.ball;
+        monthly[ym].assigned += item.assigned;
+        monthly[ym].trail += item.trail;
+        monthly[ym].yoga += item.yoga;
+        monthly[ym].other += item.other;
+      });
+
+      let labels = Object.keys(monthly).sort();
+      let sums = Object.values(monthly).map(d => ({
+        aerobic: d.running + d.ball + d.trail,
+        assigned: d.assigned,
+        strength: d.weight + d.yoga
+      }));
+
+      if (labels.length > 12) { labels = labels.slice(-12); sums = sums.slice(-12); }
+
+      renderCharts(labels, sums);
+      renderAverages(sums);
+    }
+
+    function renderRecentTable(data) {
+      const container = document.getElementById("recentTable");
+      container.innerHTML = "";
+      const table = document.createElement("table");
+      const thead = `<thead><tr>
+        <th>日期</th><th>跑步(min)</th><th>肌力訓練</th><th>球類(min)</th>
+        <th>教練指定</th><th>健行(min)</th><th>瑜伽</th><th>其他</th>
+        <th>跑速</th><th>心率</th><th>備註</th>
+      </tr></thead>`;
+      const tbody = data.map(r => `<tr>
+        <td>${r.date}</td><td>${r.running}</td><td>${r.weight}</td>
+        <td>${r.ball}</td><td>${r.assigned}</td><td>${r.trail}</td>
+        <td>${r.yoga}</td><td>${r.other}</td>
+        <td>${r.speed}</td><td>${r.heart_rate}</td><td>${r.remark}</td>
+      </tr>`).join("");
+      table.innerHTML = thead + "<tbody>" + tbody + "</tbody>";
+      container.appendChild(table);
+    }
+
+    function renderCharts(labels, sums) {
+      const datasets = [
+        { id: "aerobicChart", label: "有氧活動時間", key: "aerobic", color: "#36b9cc" },
+        { id: "assignedChart", label: "教練指定作業", key: "assigned", color: "#f6c23e" },
+        { id: "strengthChart", label: "肌力訓練", key: "strength", color: "#4e73df" }
+      ];
+
+      datasets.forEach(({ id, label, key, color }) => {
+        if (chartInstances[id]) chartInstances[id].destroy();
+        const ctx = document.getElementById(id);
+        chartInstances[id] = new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels,
+            datasets: [{
+              label,
+              data: sums.map(x => x[key]),
+              backgroundColor: color + "cc",
+              borderColor: color,
+              borderWidth: 1
+            }]
           },
-          formatter: function(value) {
-            return value;   // 顯示數值本身
+          plugins: [ChartDataLabels],
+          options: {
+            responsive: true,
+            scales: { y: { beginAtZero:true } },
+            plugins: {
+              legend: { display: false },
+              datalabels: {
+                color: '#fff',
+                anchor: 'center',
+                align: 'center',
+                font: { weight:'700', size:12 },
+                formatter: value => value>0 ? value : ''
+              }
+            }
           }
-        }
-      }
-    };
+        });
+      });
+    }
 
-    // 建立圖表，並套用 datalabels plugin
-    const ctxAerobic = document.getElementById("aerobicChart").getContext("2d");
-    const aerobicChart = new Chart(ctxAerobic, {
-      type: "bar",
-      data: {
-        labels: monthLabels,
-        datasets: [{
-          label: "有氧活動時間",
-          data: aerobicData,
-          backgroundColor: "#7ec8e3"
-        }]
-      },
-      options: commonOptions,
-      plugins: [ChartDataLabels]
-    });
-
-    const ctxAssigned = document.getElementById("assignedChart").getContext("2d");
-    const assignedChart = new Chart(ctxAssigned, {
-      type: "bar",
-      data: {
-        labels: monthLabels,
-        datasets: [{
-          label: "教練指定作業完成次數",
-          data: assignedData,
-          backgroundColor: "#f9ce67"
-        }]
-      },
-      options: commonOptions,
-      plugins: [ChartDataLabels]
-    });
-
-    const ctxStrength = document.getElementById("strengthChart").getContext("2d");
-    const strengthChart = new Chart(ctxStrength, {
-      type: "bar",
-      data: {
-        labels: monthLabels,
-        datasets: [{
-          label: "肌力訓練次數",
-          data: strengthData,
-          backgroundColor: "#5d9cec"
-        }]
-      },
-      options: commonOptions,
-      plugins: [ChartDataLabels]
-    });
-  </script>
-</body>
-</html>
-
+    function renderAverages(sums) {
+      const avg = arr => arr.length ? (arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(1) : 0;
+      document.getElementById("avgAerobic").innerText = `📊 平均：${avg(sums.map(x=>x.aerobic))} 分鐘/月`;
+      document.get
