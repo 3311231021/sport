@@ -2,74 +2,117 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8" />
-  <title>🏋️ 測試 Chart.js 顯示</title>
+  <title>🏋️‍♀️ 運動記錄 Dashboard</title>
 
-  <!-- ✅ Chart.js v3 + datalabels plugin 相容版本 -->
+  <!-- Chart.js v3.9.1 + datalabels v2.2.0 -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
 
+  <!-- CSV 解析 -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
   <style>
-    body { font-family: sans-serif; text-align: center; }
-    canvas { max-width: 350px; margin: 20px; }
+    body { font-family: "Segoe UI", Arial, sans-serif; text-align:center; }
+    canvas { max-width: 400px; margin: 20px auto; display:block; }
   </style>
 </head>
 <body>
-  <h2>Chart.js 測試</h2>
+  <h2>🏋️‍♀️ 運動記錄 Dashboard</h2>
+
   <canvas id="aerobicChart"></canvas>
   <canvas id="assignedChart"></canvas>
   <canvas id="strengthChart"></canvas>
 
   <script>
-    // 假資料
-    const labels = ["2025-05", "2025-06", "2025-07", "2025-08", "2025-09"];
-    const sums = [
-      { aerobic: 120, assigned: 3, strength: 10 },
-      { aerobic: 90, assigned: 5, strength: 12 },
-      { aerobic: 100, assigned: 4, strength: 8 },
-      { aerobic: 130, assigned: 6, strength: 9 },
-      { aerobic: 110, assigned: 2, strength: 11 },
-    ];
+    let allData = [];
 
-    const chartDefs = [
-      { id:"aerobicChart", key:"aerobic", color:"#00bcd4", title:"有氧活動" },
-      { id:"assignedChart", key:"assigned", color:"#ffc107", title:"教練指定" },
-      { id:"strengthChart", key:"strength", color:"#3f51b5", title:"肌力訓練" }
-    ];
+    // 解析跑速 "mm:ss" -> 秒數
+    function parsePace(paceStr) {
+      if (!paceStr) return 0;
+      const parts = paceStr.split(':').map(Number);
+      if (parts.length === 2) return parts[0]*60 + parts[1];
+      return +paceStr;
+    }
 
-    chartDefs.forEach(({id,key,color,title})=>{
-      const ctx = document.getElementById(id);
-      new Chart(ctx,{
-        type:"bar",
-        data:{
-          labels,
-          datasets:[{
-            label: title,
-            data:sums.map(x=>x[key]),
-            backgroundColor: color+"99",
-            borderColor: color,
-            borderWidth:1
-          }]
-        },
-        plugins:[ChartDataLabels],
-        options:{
-          responsive:true,
-          plugins:{
-            legend:{ display:false },
-            datalabels:{
-              color:'#333',
-              anchor:'end',
-              align:'top',
-              font:{ weight:'bold', size:11 }
-            }
-          },
-          scales:{
-            y:{ beginAtZero:true },
-            x:{ grid:{ display:false } }
-          }
-        }
-      });
+    // 載入 sport.csv
+    Papa.parse('sport.csv', {
+      download: true,
+      header: true,
+      skipEmptyLines: true,
+      complete: function(results) {
+        allData = results.data.map(r => {
+          const paceStr = r["跑速"] || "";
+          const paceSec = parsePace(paceStr);
+          return {
+            date: r["日期"],
+            running: +r["跑步(min)"] || 0,
+            weight: +r["肌力訓練"] || 0,
+            ball: +r["球類(min)"] || 0,
+            assigned: +r["教練指定"] || 0,
+            trail: +r["健行(min)"] || 0,
+            yoga: +r["瑜伽"] || 0,
+            other: +r["其他"] || 0,
+            speed: paceStr,
+            speedSec: paceSec,
+            heart_rate: +r["心率"] || "",
+            remark: r["備註"] || ""
+          };
+        }).filter(d => d.date);
+
+        renderCharts();
+      }
     });
+
+    function renderCharts() {
+      const labels = allData.map(d => d.date);
+      const sums = {
+        aerobic: allData.map(d => d.running + d.ball + d.trail + d.yoga + d.other),
+        assigned: allData.map(d => d.assigned),
+        strength: allData.map(d => d.weight)
+      };
+
+      const chartDefs = [
+        { id:"aerobicChart", key:"aerobic", color:"#00bcd4", title:"有氧活動" },
+        { id:"assignedChart", key:"assigned", color:"#ffc107", title:"教練指定" },
+        { id:"strengthChart", key:"strength", color:"#3f51b5", title:"肌力訓練" }
+      ];
+
+      chartDefs.forEach(({id,key,color,title})=>{
+        const ctx = document.getElementById(id);
+        new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels,
+            datasets: [{
+              label: title,
+              data: sums[key],
+              backgroundColor: color+"99",
+              borderColor: color,
+              borderWidth: 1
+            }]
+          },
+          plugins: [ChartDataLabels],
+          options: {
+            responsive: true,
+            plugins: {
+              legend: { display: false },
+              datalabels: {
+                color:'#333',
+                anchor:'end',
+                align:'top',
+                font:{ weight:'bold', size:11 }
+              }
+            },
+            scales: {
+              y: { beginAtZero:true },
+              x: { grid:{ display:false } }
+            }
+          }
+        });
+      });
+    }
   </script>
 </body>
 </html>
+
 
