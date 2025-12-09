@@ -1,0 +1,402 @@
+
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>地圖運動紀錄</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 10px;
+            background: #f5f5f5;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        #map {
+            height: 300px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .card {
+            background: white;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            box-shadow: 0 0 8px rgba(0,0,0,0.12);
+        }
+
+        .label {
+            font-weight: bold;
+        }
+
+        .value {
+            font-family: "Consolas", "Courier New", monospace;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        button {
+            flex: 1;
+            padding: 10px;
+            font-size: 15px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+        }
+
+        #btnStart {
+            background: #007bff;
+            color: white;
+        }
+
+        #btnSave {
+            background: #28a745;
+            color: white;
+        }
+
+        #btnBack {
+            background: #6c757d;
+            color: white;
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>📱 地圖 + 計步運動紀錄</h2>
+
+    <!-- 地圖 -->
+    <div id="map"></div>
+
+    <!-- 運動資訊卡 -->
+    <div class="card">
+        <p><span class="label">⏱ 運動時間：</span><span id="timeText" class="value">00:00</span></p>
+        <p><span class="label">🧍‍♂️ 步數：</span><span id="steps" class="value">0</span> 步</p>
+        <p><span class="label">🛣️ 移動距離：</span><span id="distance" class="value">0.0</span> 公尺</p>
+        <p><span class="label">📍 位置：</span><span id="status" class="value">等待定位中...</span></p>
+        <p><span class="label">🛰️ 精度：</span><span id="accText" class="value">--</span> m</p>
+    </div>
+
+    <!-- 按鈕列 -->
+    <div class="btn-row">
+        <button id="btnStart">開始運動</button>
+        <button id="btnSave" disabled>確認並儲存紀錄</button>
+    </div>
+    <button id="btnBack">回儀表板</button>
+
+    <script>
+        // ================================
+        // 0. 檢查登入狀態
+        // ================================
+        const token = localStorage.getItem("token");
+        if (!token) {
+            alert("請先登入！");
+            window.location.href = "login.html";
+        }
+
+        // ================================
+        // 1. Leaflet 地圖初始化（起始點：台中火車站）
+        // ================================
+        const INIT_LAT = 24.136873;
+        const INIT_LNG = 120.685017;
+        const INIT_ZOOM = 16;
+
+        const map = L.map("map").setView([INIT_LAT, INIT_LNG], INIT_ZOOM);
+
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            maxZoom: 19,
+            attribution: "© OpenStreetMap"
+        }).addTo(map);
+
+        let marker = L.marker([INIT_LAT, INIT_LNG]).addTo(map);
+
+        // 軌跡 & 距離
+        let path = [];
+        let polyline = null;
+        let totalDistance = 0;
+
+        let firstFix = true;     // 是否完成第一次 GPS 校正
+        let watchId = null;      // geolocation 監聽 ID
+
+        // ================================
+        // 2. Haversine 公式：兩點距離（公尺）
+        // ================================
+        function getDistance(lat1, lng1, lat2, lng2) {
+            function toRad(x) {
+                return x * Math.PI / 180;
+            }
+            const R = 6371000; // 公尺
+            const dLat = toRad(lat2 - lat1);
+            const dLng = toRad(lng2 - lng1);
+            const a =
+                Math.sin(dLat / 2) ** 2 +
+                Math.cos(toRad(lat1)) *
+                Math.cos(toRad(lat2)) *
+                Math.sin(dLng / 2) ** 2;
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
+        // ================================
+        // 3. GPS 追蹤
+        // ================================
+        function startGPS() {
+            if (!navigator.geolocation) {
+                alert("你的手機不支援 GPS 定位");
+                return;
+            }
+
+            watchId = navigator.geolocation.watchPosition(
+                (pos) => {
+                    const { latitude, longitude, accuracy } = pos.coords;
+                    const age = Date.now() - pos.timestamp;
+
+                    // 過舊資料忽略
+                    if (age > 5000) {
+                        console.log("忽略舊定位資料，age =", age);
+                        return;
+                    }
+
+                    document.getElementById("status").innerText =
+                        `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+                    document.getElementById("accText").innerText =
+                        accuracy.toFixed(1);
+
+                    // 第一次定位：校正到真實位置
+                    if (firstFix) {
+                        map.setView([latitude, longitude], 18);
+                        marker.setLatLng([latitude, longitude]);
+                        path = [[latitude, longitude]];
+                        firstFix = false;
+                        return; // 第一次不算距離
+                    }
+
+                    // 精度太差就忽略
+                    if (accuracy > 25) {
+                        console.log("精度過低，忽略點 accuracy =", accuracy);
+                        return;
+                    }
+
+                    marker.setLatLng([latitude, longitude]);
+                    path.push([latitude, longitude]);
+
+                    if (polyline) map.removeLayer(polyline);
+                    polyline = L.polyline(path, { weight: 5 }).addTo(map);
+
+                    if (path.length > 1) {
+                        const p1 = path[path.length - 2];
+                        const p2 = path[path.length - 1];
+                        const d = getDistance(p1[0], p1[1], p2[0], p2[1]);
+                        totalDistance += d;
+                        document.getElementById("distance").innerText =
+                            totalDistance.toFixed(1);
+                    }
+                },
+                (err) => {
+                    alert("GPS 錯誤：" + err.message);
+                },
+                {
+                    enableHighAccuracy: true,
+                    maximumAge: 0,
+                    timeout: 20000
+                }
+            );
+        }
+
+        function stopGPS() {
+            if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+        }
+
+        // ================================
+        // 4. 計步器 DeviceMotion
+        // ================================
+        let steps = 0;
+        let lastPeak = 0;
+        let motionHandler = null;
+
+        function onMotion(e) {
+            const acc = e.acceleration;
+            if (!acc) return;
+
+            const total =
+                Math.abs(acc.x || 0) +
+                Math.abs(acc.y || 0) +
+                Math.abs(acc.z || 0);
+
+            if (total > 18) {
+                const now = Date.now();
+                if (now - lastPeak > 300) {
+                    steps++;
+                    document.getElementById("steps").innerText = steps;
+                    lastPeak = now;
+                }
+            }
+        }
+
+        function startPedometer() {
+            motionHandler = onMotion;
+
+            if (typeof DeviceMotionEvent !== "undefined" &&
+                typeof DeviceMotionEvent.requestPermission === "function") {
+
+                DeviceMotionEvent.requestPermission().then((res) => {
+                    if (res === "granted") {
+                        window.addEventListener("devicemotion", motionHandler);
+                    } else {
+                        alert("未允許加速度感測器，無法計步");
+                    }
+                });
+            } else {
+                window.addEventListener("devicemotion", motionHandler);
+            }
+        }
+
+        function stopPedometer() {
+            if (motionHandler) {
+                window.removeEventListener("devicemotion", motionHandler);
+                motionHandler = null;
+            }
+        }
+
+        // ================================
+        // 5. 計時器
+        // ================================
+        let startTime = null;
+        let timerId = null;
+
+        function startTimer() {
+            startTime = Date.now();
+            timerId = setInterval(() => {
+                const diff = Date.now() - startTime;
+                const sec = Math.floor(diff / 1000);
+                const m = String(Math.floor(sec / 60)).padStart(2, "0");
+                const s = String(sec % 60).padStart(2, "0");
+                document.getElementById("timeText").innerText = `${m}:${s}`;
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (timerId) {
+                clearInterval(timerId);
+                timerId = null;
+            }
+        }
+
+        function getDurationMinutes() {
+            if (!startTime) return 0;
+            const diff = Date.now() - startTime;
+            return Math.max(1, Math.round(diff / 1000 / 60)); // 至少 1 分鐘
+        }
+
+        // ================================
+        // 6. 按鈕事件
+        // ================================
+        const btnStart = document.getElementById("btnStart");
+        const btnSave  = document.getElementById("btnSave");
+        const btnBack  = document.getElementById("btnBack");
+
+        btnStart.onclick = () => {
+            // 重置資料
+            steps = 0;
+            lastPeak = 0;
+            totalDistance = 0;
+            path = [];
+            if (polyline) {
+                map.removeLayer(polyline);
+                polyline = null;
+            }
+            document.getElementById("steps").innerText = "0";
+            document.getElementById("distance").innerText = "0.0";
+            document.getElementById("timeText").innerText = "00:00";
+            firstFix = true;
+
+            // 啟動
+            startGPS();
+            startPedometer();
+            startTimer();
+
+            btnStart.disabled = true;
+            btnSave.disabled = false;
+
+            alert("開始運動！已啟動 GPS + 計步器");
+        };
+
+        btnSave.onclick = async () => {
+            // 停止所有感測
+            stopGPS();
+            stopPedometer();
+            stopTimer();
+
+            const durationMin = getDurationMinutes();
+
+            // 簡單估算卡路里與速度，可以之後再調整
+            const distanceKm = totalDistance / 1000; // 公里
+            const speedKmh = durationMin > 0 ? (distanceKm / (durationMin / 60)) : 0;
+            const calories = Math.round(totalDistance * 0.05); // 自訂公式：每公尺 0.05 kcal
+
+            const payload = {
+                activity_type: "戶外走路",
+                duration: durationMin,     // 分鐘
+                steps: steps,
+                calories: calories,
+                heart_rate: 0,
+                speed: Number(speedKmh.toFixed(2))
+            };
+
+            try {
+                const res = await fetch("/api/activity_records", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": "Bearer " + token
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    alert("儲存失敗：" + (data.message || "未知錯誤"));
+                    return;
+                }
+
+                alert("運動紀錄已儲存！");
+                window.location.href = "dashboard.html";
+            } catch (err) {
+                console.error(err);
+                alert("發生錯誤，請稍後再試");
+            }
+        };
+
+        btnBack.onclick = () => {
+            window.location.href = "dashboard.html";
+        };
+    </script>
+</body>
+</html>
