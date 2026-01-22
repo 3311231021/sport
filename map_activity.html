@@ -1,340 +1,231 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>地圖運動：GPS + 計步</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>行動運動紀錄系統（期末專案）</title>
 
-  <!-- Leaflet -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<!-- Leaflet 地圖（通訊：OpenStreetMap） -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
-  <style>
-    body { font-family: Arial, sans-serif; margin: 14px; background: #f5f5f5; }
-    h2 { margin: 6px 0 14px; }
-
-    #map { height: 320px; margin-bottom: 12px; border-radius: 12px; overflow: hidden; }
-
-    .card {
-      background: white; padding: 14px; margin-bottom: 12px;
-      border-radius: 12px; box-shadow: 0 0 10px rgba(0,0,0,0.12);
-    }
-
-    .row { display:flex; gap:10px; flex-wrap: wrap; }
-    .field { flex: 1; min-width: 180px; }
-    label { display:block; font-weight:bold; margin-bottom:6px; }
-
-    select, input {
-      width: 100%; padding: 10px; border-radius: 10px;
-      border: 1px solid #ddd; font-size: 15px; background: #fff;
-    }
-
-    button {
-      width: 100%; padding: 12px; font-size: 16px;
-      border-radius: 12px; border: none; cursor: pointer;
-      color: white; margin-top: 10px;
-    }
-
-    .btn-start { background:#0d6efd; }
-    .btn-stop  { background:#ef4444; }
-    .btn-save  { background:#16a34a; }
-    .btn-back  { background:#64748b; }
-
-    .muted { color:#6b7280; font-size: 14px; }
-    .big { font-size: 20px; font-weight: bold; }
-    .ok { color:#16a34a; font-weight:bold; }
-    .warn { color:#dc2626; font-weight:bold; }
-    .mini { font-size: 13px; color:#6b7280; }
-  </style>
+<style>
+body {
+  font-family: Arial, sans-serif;
+  margin: 10px;
+  background: #f5f5f5;
+}
+#map {
+  height: 300px;
+  margin-bottom: 12px;
+  border-radius: 10px;
+}
+.card {
+  background: #fff;
+  padding: 12px;
+  border-radius: 10px;
+  box-shadow: 0 0 6px rgba(0,0,0,.2);
+}
+button {
+  width: 100%;
+  padding: 12px;
+  font-size: 16px;
+  margin-top: 10px;
+  border: none;
+  border-radius: 8px;
+  background: #007bff;
+  color: white;
+}
+</style>
 </head>
 
 <body>
-  <h2>📍 地圖運動（GPS + 計步）</h2>
 
-  <!-- 設定區 -->
-  <div class="card">
-    <div class="row">
-      <div class="field">
-        <label>運動種類</label>
-        <select id="activityType">
-          <option value="走路">走路</option>
-          <option value="跑步">跑步</option>
-          <option value="騎車">騎車</option>
-          <option value="健身">健身</option>
-          <option value="瑜伽">瑜伽</option>
-        </select>
-      </div>
+<h2>📱 行動運動紀錄系統</h2>
 
-      <div class="field">
-        <label>運動時間（分鐘）</label>
-        <input id="manualMinutes" type="number" min="1" placeholder="例如：30（可不填，使用自動計時）" />
-        <div class="mini">填了就以你填的分鐘數為主，不填就用開始/結束的計時。</div>
-      </div>
+<div id="map"></div>
 
-      <div class="field">
-        <label>卡路里（kcal，可選）</label>
-        <input id="calories" type="number" min="0" placeholder="可留空" />
-      </div>
-    </div>
-  </div>
+<div class="card">
+  <p>📍 位置：<span id="pos"> 定位 ing </span></p>
+  <p>🛰️ GPS 精度：<span id="acc">--</span> m</p>
+  <p>🛣️ 移動距離：<span id="dist">0</span> 公尺</p>
+  <p>👣 步數：<span id="steps">0</span></p>
+</div>
 
-  <!-- 地圖 -->
-  <div id="map"></div>
-
-  <!-- 即時資訊 -->
-  <div class="card">
-    <div class="row">
-      <div class="field">
-        <div class="muted">🧍‍♂️ 步數</div>
-        <div class="big"><span id="steps">0</span> 步</div>
-      </div>
-
-      <div class="field">
-        <div class="muted">⏱️ 計時（僅顯示）</div>
-        <div class="big"><span id="duration">0</span> 分鐘</div>
-        <div class="mini">如果你有填「運動時間（分鐘）」，儲存會以你填的為準。</div>
-      </div>
-    </div>
-
-    <hr style="border:none;border-top:1px solid #eee;margin:12px 0;">
-
-    <div class="muted">📍 位置：<span id="status">等待定位中...</span></div>
-    <div class="muted">🎯 狀態：<span id="stateText" class="warn">尚未開始</span></div>
-
-    <button id="btnStart" class="btn-start">開始運動</button>
-    <button id="btnStop"  class="btn-stop"  style="display:none;">結束運動</button>
-    <button id="btnSave"  class="btn-save"  style="display:none;">儲存運動紀錄（含步數）</button>
-    <button class="btn-back" onclick="location.href='dashboard.html'">回 Dashboard</button>
-
-    <div id="msg" class="muted" style="margin-top:10px;"></div>
-  </div>
+<button id="btnStart">開始運動</button>
 
 <script>
-  // ===== API 基本 =====
-  const API_BASE = "http://localhost:3000";
-  const token = localStorage.getItem("token");
-  if (!token) {
-    alert("請先登入");
-    location.href = "login.html";
+/* =========================================================
+   1. 地圖顯示（通訊）
+   ========================================================= */
+
+const INIT_LAT = 24.136873;
+const INIT_LNG = 120.685017;
+
+const map = L.map("map").setView([INIT_LAT, INIT_LNG], 16);
+
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 19,
+  attribution: "© OpenStreetMap"
+}).addTo(map);
+
+let marker = L.marker([INIT_LAT, INIT_LNG]).addTo(map);
+let polyline = null;
+
+/* =========================================================
+   2. GPS 定位（行動 + 通訊）
+   ========================================================= */
+
+let path = [];
+let totalDistance = 0;
+let firstFix = true;
+let gpsWatchId = null;
+
+function startGPS() {
+
+  // 避免重複啟動 GPS
+  if (gpsWatchId !== null) {
+    navigator.geolocation.clearWatch(gpsWatchId);
   }
 
-  async function api(path, method="GET", body=null) {
-    const res = await fetch(API_BASE + path, {
-      method,
-      headers: {
-        "Content-Type":"application/json",
-        "Authorization":"Bearer " + token
-      },
-      body: body ? JSON.stringify(body) : null
+  gpsWatchId = navigator.geolocation.watchPosition(
+    pos => {
+      const { latitude, longitude, accuracy } = pos.coords;
+      const age = Date.now() - pos.timestamp;
+
+      if (age > 5000) return;                 // 過濾 5 秒前的舊資料
+      if (!firstFix && accuracy > 25) return; // 過濾低精度
+
+      document.getElementById("pos").innerText =
+        latitude.toFixed(6) + ", " + longitude.toFixed(6);
+      document.getElementById("acc").innerText =
+        accuracy.toFixed(1);
+
+      // 初始定位
+      if (firstFix) {
+        map.setView([latitude, longitude], 18);
+        marker.setLatLng([latitude, longitude]);
+        path = [[latitude, longitude]];
+        firstFix = false;
+        return;
+      }
+
+      marker.setLatLng([latitude, longitude]);
+      path.push([latitude, longitude]);
+
+      // 更新移動路徑
+      if (!polyline) {
+        polyline = L.polyline(path, { weight: 5 }).addTo(map);
+      } else {
+        polyline.setLatLngs(path);
+      }
+
+      // 距離計算
+      const p1 = path[path.length - 2];
+      const p2 = path[path.length - 1];
+      const d = calcDistance(p1, p2);
+
+      if (d < 1.5) return; // 忽略小於 1.5 公尺的移動
+
+      totalDistance += d;
+      document.getElementById("dist").innerText =
+        totalDistance.toFixed(1);
+    },
+    err => {
+      if (err.code === 1) {
+        alert("定位權限被拒絕，請到瀏覽器設定中允許位置存取");
+      } else if (err.code === 2) {
+        alert("無法取得定位資訊，請到戶外再試");
+      } else if (err.code === 3) {
+        alert("GPS 逾時，請稍候再試");
+      } else {
+        alert("GPS 錯誤：" + err.message);
+      }
+    },
+    { enableHighAccuracy: true, timeout: 20000 }
+  );
+}
+
+/* =========================================================
+   3. 距離計算（Haversine）
+   ========================================================= */
+
+function calcDistance(a, b) {
+  const R = 6371000;
+  const toRad = x => x * Math.PI / 180;
+
+  const dLat = toRad(b[0] - a[0]);
+  const dLng = toRad(b[1] - a[1]);
+  const lat1 = toRad(a[0]);
+  const lat2 = toRad(b[0]);
+
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) *
+    Math.sin(dLng / 2) ** 2;
+
+  return 2 * R * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+}
+
+/* =========================================================
+   4. 計步器（行動：加速度感測器）
+   ========================================================= */
+
+let steps = 0;
+let lastPeak = 0;
+
+function startPedometer() {
+  if (typeof DeviceMotionEvent?.requestPermission === "function") {
+    DeviceMotionEvent.requestPermission().then(res => {
+      if (res === "granted") {
+        window.addEventListener("devicemotion", onMotion);
+      }
     });
+  } else {
+    window.addEventListener("devicemotion", onMotion);
+  }
+}
 
-    const ct = res.headers.get("content-type") || "";
-    if (!ct.includes("application/json")) {
-      const t = await res.text();
-      throw new Error(`API 回傳非 JSON：${path} (${res.status})\n${t.slice(0,200)}`);
-    }
+function onMotion(e) {
+  const acc = e.acceleration || e.accelerationIncludingGravity;
+  if (!acc) return;
 
-    const data = await res.json();
-    if (!res.ok) throw new Error(data?.message || `API 錯誤：${path} (${res.status})`);
-    return data;
+  const total =
+    Math.abs(acc.x || 0) +
+    Math.abs(acc.y || 0) +
+    Math.abs(acc.z || 0);
+
+  const now = Date.now();
+  if (total > 22 && now - lastPeak > 400) {
+    steps++;
+    document.getElementById("steps").innerText = steps;
+    lastPeak = now;
+  }
+}
+
+/* =========================================================
+   5. 系統流程：開始運動
+   ========================================================= */
+
+document.getElementById("btnStart").onclick = () => {
+  steps = 0;
+  totalDistance = 0;
+  path = [];
+  firstFix = true;
+
+  if (polyline) {
+    map.removeLayer(polyline);
+    polyline = null;
   }
 
-  function setMsg(t){ document.getElementById("msg").textContent = t || ""; }
+  document.getElementById("steps").innerText = "0";
+  document.getElementById("dist").innerText = "0";
 
-  // ===== 地圖初始化 =====
-  const map = L.map("map").setView([25.033964, 121.564468], 16);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19,
-    attribution: "© OpenStreetMap"
-  }).addTo(map);
+  startGPS();
+  startPedometer();
 
-  let marker = L.marker([25.033964, 121.564468]).addTo(map);
-
-  // ===== GPS（只顯示，不影響儲存） =====
-  let watchId = null;
-
-  function startGPS() {
-    if (!navigator.geolocation) {
-      document.getElementById("status").innerText = "此裝置不支援 GPS";
-      return;
-    }
-
-    watchId = navigator.geolocation.watchPosition(
-      (pos) => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-        const acc = pos.coords.accuracy;
-
-        document.getElementById("status").innerText =
-          `${lat.toFixed(6)}, ${lng.toFixed(6)}（誤差 ${acc.toFixed(0)}m）`;
-
-        marker.setLatLng([lat, lng]);
-        map.setView([lat, lng]);
-      },
-      (err) => {
-        console.warn("GPS 錯誤：", err.message);
-        document.getElementById("status").innerText =
-          "GPS 取得失敗（不影響步數/時間儲存）";
-      },
-      {
-        enableHighAccuracy: true,
-        maximumAge: 0,
-        timeout: 20000
-      }
-    );
-  }
-
-  function stopGPS() {
-    if (watchId !== null) {
-      navigator.geolocation.clearWatch(watchId);
-      watchId = null;
-    }
-  }
-
-  // ===== 計步器 =====
-  let steps = 0;
-  let lastPeak = 0;
-  let motionOn = false;
-
-  function startPedometer() {
-    if (motionOn) return;
-
-    const enable = () => {
-      window.addEventListener("devicemotion", onMotion);
-      motionOn = true;
-    };
-
-    if (typeof DeviceMotionEvent !== "undefined" &&
-        typeof DeviceMotionEvent.requestPermission === "function") {
-      // iPhone 需要使用者操作後授權
-      DeviceMotionEvent.requestPermission().then((res) => {
-        if (res === "granted") enable();
-        else alert("你沒有允許加速度感測器（計步無法使用）");
-      });
-    } else {
-      enable();
-    }
-  }
-
-  function stopPedometer() {
-    if (!motionOn) return;
-    window.removeEventListener("devicemotion", onMotion);
-    motionOn = false;
-  }
-
-  function onMotion(e) {
-    const acc = e.acceleration;
-    if (!acc) return;
-
-    const total = Math.abs(acc.x||0) + Math.abs(acc.y||0) + Math.abs(acc.z||0);
-
-    // 門檻可調：18~22 看手機敏感度
-    if (total > 18) {
-      const now = Date.now();
-      if (now - lastPeak > 300) {
-        steps++;
-        document.getElementById("steps").innerText = steps;
-        lastPeak = now;
-      }
-    }
-  }
-
-  // ===== 計時（顯示用） =====
-  let startTime = null;
-  let timer = null;
-
-  function startTimer() {
-    startTime = Date.now();
-    timer = setInterval(() => {
-      const mins = Math.floor((Date.now() - startTime) / 60000);
-      document.getElementById("duration").innerText = mins;
-    }, 1000);
-  }
-
-  function stopTimer() {
-    if (timer) clearInterval(timer);
-    timer = null;
-  }
-
-  function getDurationMinutes() {
-    if (!startTime) return 0;
-    return Math.max(1, Math.floor((Date.now() - startTime) / 60000));
-  }
-
-  // ===== 控制流程 =====
-  let started = false;
-  let finished = false;
-
-  function resetSession() {
-    steps = 0;
-    lastPeak = 0;
-    document.getElementById("steps").innerText = "0";
-    document.getElementById("duration").innerText = "0";
-    document.getElementById("status").innerText = "等待定位中...";
-    setMsg("");
-  }
-
-  document.getElementById("btnStart").onclick = () => {
-    if (started) return;
-    started = true;
-    finished = false;
-
-    resetSession();
-
-    document.getElementById("stateText").className = "ok";
-    document.getElementById("stateText").textContent = "運動中…";
-
-    document.getElementById("btnStart").style.display = "none";
-    document.getElementById("btnStop").style.display = "block";
-    document.getElementById("btnSave").style.display = "none";
-
-    startGPS();
-    startPedometer();
-    startTimer();
-
-    setMsg("已啟動 GPS + 計步器。運動結束請按「結束運動」。");
-  };
-
-  document.getElementById("btnStop").onclick = () => {
-    if (!started || finished) return;
-    finished = true;
-
-    stopGPS();
-    stopPedometer();
-    stopTimer();
-
-    document.getElementById("stateText").className = "muted";
-    document.getElementById("stateText").textContent = "已結束（可儲存）";
-
-    document.getElementById("btnStop").style.display = "none";
-    document.getElementById("btnSave").style.display = "block";
-
-    setMsg("運動已結束。按「儲存運動紀錄」把步數寫入資料庫。");
-  };
-
-  // ===== 儲存：用 /api/activity_records（跟 dashboard 同一套） =====
-  document.getElementById("btnSave").onclick = async () => {
-    try {
-      const activity_type = document.getElementById("activityType").value;
-
-      const manual = document.getElementById("manualMinutes").value;
-      const duration = manual ? Number(manual) : getDurationMinutes();
-
-      const caloriesVal = document.getElementById("calories").value;
-      const calories = caloriesVal === "" ? 0 : Number(caloriesVal);
-
-      const payload = { activity_type, duration, steps, calories };
-
-      // ✅ 這裡是關鍵：改成 /api/activity_records
-      await api("/api/activity_records", "POST", payload);
-
-      alert(`✅ 已儲存！\n${activity_type} ${duration} 分鐘｜步數 ${steps} 步`);
-      location.href = "dashboard.html";
-    } catch (e) {
-      console.error(e);
-      alert("❌ 儲存失敗：" + e.message);
-    }
-  };
+  alert("已啟動 GPS 與計步功能");
+};
 </script>
 
 </body>
