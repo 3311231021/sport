@@ -1,352 +1,559 @@
+```html
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-  <meta charset="UTF-8" />
-  <title>健康管理與運動記錄系統</title>
-  <script src="https://jsdelivr.net"></script>
-  <script src="https://jsdelivr.net"></script>
-  <style>
-    body {
-      font-family: "Segoe UI", Arial, sans-serif;
-      margin: 20px;
-      background-color: #fafafa;
-      color: #333;
-    }
-    h1 { text-align: center; margin-bottom: 5px; }
-    #todayDate { text-align: center; font-size: 14px; color: #666; margin-bottom: 20px; }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 
-    /* 最近紀錄表格 */
-    #recentTable { overflow-x: auto; margin-bottom: 25px; }
-    table {
-      width: 100%;
-      min-width: 900px;
-      border-collapse: collapse;
-      background: #fff;
-      border-radius: 10px;
-      overflow: hidden;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; font-size: 13px; }
-    th { background-color: #f3f3f3; }
+<title>健康管理與運動記錄系統</title>
 
-    /* 統計圖區塊 */
-    .chart-container {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 20px;
-      justify-items: center;
-      align-items: stretch;
-    }
-    .chart-box {
-      background: #fff;
-      border-radius: 12px;
-      padding: 15px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      text-align: center;
-      width: 100%;
-      max-width: 500px;
-      box-sizing: border-box;
-    }
-    .chart-box h3 { font-size: 15px; margin-bottom: 6px; }
-    .avg-box { font-size: 13px; margin-top: 4px; color: #555; }
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    canvas {
-      width: 100% !important;
-      aspect-ratio: 4 / 3 !important;
+<!-- DataLabels -->
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+
+<style>
+body{
+    font-family: "Segoe UI", Arial, sans-serif;
+    margin:20px;
+    background:#f5f6fa;
+    color:#333;
+}
+
+h1{
+    text-align:center;
+    margin-bottom:5px;
+}
+
+#todayDate{
+    text-align:center;
+    color:#666;
+    margin-bottom:20px;
+}
+
+h2{
+    margin-top:25px;
+}
+
+.summary-box{
+    background:white;
+    padding:15px;
+    border-radius:12px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.08);
+    margin-bottom:20px;
+    text-align:center;
+    font-size:16px;
+    line-height:1.8;
+}
+
+#recentTable{
+    overflow-x:auto;
+    margin-bottom:30px;
+}
+
+table{
+    width:100%;
+    min-width:1100px;
+    border-collapse:collapse;
+    background:white;
+    border-radius:12px;
+    overflow:hidden;
+    box-shadow:0 2px 8px rgba(0,0,0,0.08);
+}
+
+th,td{
+    border:1px solid #ddd;
+    padding:8px;
+    text-align:center;
+    font-size:13px;
+}
+
+th{
+    background:#f1f1f1;
+}
+
+.chart-container{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+    gap:20px;
+}
+
+.chart-box{
+    background:white;
+    border-radius:12px;
+    padding:15px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.08);
+}
+
+.chart-box h3{
+    text-align:center;
+    margin-bottom:10px;
+}
+
+.avg-box{
+    text-align:center;
+    margin-top:10px;
+    color:#666;
+}
+
+canvas{
+    width:100% !important;
+    aspect-ratio:4/3 !important;
+}
+
+.success{
+    color:#1cc88a;
+    font-weight:bold;
+}
+
+.fail{
+    color:#e74a3b;
+    font-weight:bold;
+}
+
+@media(max-width:600px){
+    body{
+        margin:10px;
     }
 
-    @media (max-width: 600px) {
-      body { margin: 10px; }
-      h1 { font-size: 18px; }
-      th, td { font-size: 11px; }
+    th,td{
+        font-size:11px;
     }
-  </style>
+}
+</style>
 </head>
+
 <body>
-  <h1>🏋️‍♀️ 健康管理與運動記錄系統 (Demo: Nancy)</h1>
-  <div id="todayDate"></div>
-  
-  <h2> 🎯 Target 每週至少運動3次 ＆ 落實12點前自覺關機</h2>
-  
-  <h2>🗓️ 最近 10 筆健康與運動紀錄</h2>
-  <div id="recentTable"></div>
 
-  <div class="chart-container">
+<h1>🏋️‍♀️ 健康管理與運動記錄系統 (Demo: Nancy)</h1>
+
+<div id="todayDate"></div>
+
+<h2>🎯 Target 每週至少運動3次 ＆ 24點前睡覺</h2>
+
+<div class="summary-box" id="sleepSummary"></div>
+
+<h2>🗓️ 最近 10 筆健康與運動紀錄</h2>
+
+<div id="recentTable"></div>
+
+<div class="chart-container">
+
     <div class="chart-box">
-      <h3>🏃‍♂️ 有氧活動時間 (min)</h3>
-      <canvas id="aerobicChart"></canvas>
-      <div class="avg-box" id="avgAerobic"></div>
+        <h3>🏃‍♂️ 每月有氧活動時間</h3>
+        <canvas id="aerobicChart"></canvas>
+        <div class="avg-box" id="avgAerobic"></div>
     </div>
+
     <div class="chart-box">
-      <h3>📋 教練指定作業完成次數</h3>
-      <canvas id="assignedChart"></canvas>
-      <div class="avg-box" id="avgAssigned"></div>
+        <h3>📋 每月教練指定作業</h3>
+        <canvas id="assignedChart"></canvas>
+        <div class="avg-box" id="avgAssigned"></div>
     </div>
+
     <div class="chart-box">
-      <h3>💪 肌力訓練次數</h3>
-      <canvas id="strengthChart"></canvas>
-      <div class="avg-box" id="avgStrength"></div>
+        <h3>💪 每月肌力訓練</h3>
+        <canvas id="strengthChart"></canvas>
+        <div class="avg-box" id="avgStrength"></div>
     </div>
-    <!-- 🛌 核心優化：統計 24點前自覺關機的達成次數與百分比率 -->
+
     <div class="chart-box">
-      <h3>🛌 自覺生活防禦：24點前關機達成次數 (次)</h3>
-      <canvas id="sleepChart"></canvas>
-      <div class="avg-box" id="avgSleep"></div>
+        <h3>🛌 每月 24 點前睡覺次數</h3>
+        <canvas id="sleepChart"></canvas>
+        <div class="avg-box" id="avgSleep"></div>
     </div>
-  </div>
 
-  <script>
-    const todayElement = document.getElementById("todayDate");
-    const today = new Date();
-    const options = { year: "numeric", month: "long", day: "numeric", weekday: "long" };
-    todayElement.textContent = `📅 今天日期：${today.toLocaleDateString("zh-TW", options)}`;
+</div>
 
-    let allData = [];
-    let chartInstances = {};
+<script>
 
-    fetch("sport.csv")
-      .then(res => res.text())
-      .then(text => {
-        const lines = text.trim().split("\n");
-        const headers = lines.shift().split(",");
+const today = new Date();
 
-        allData = lines.map(line => {
-          let values = line.split(",");
-          if (!values || values[0].trim() === "") return null;
+document.getElementById("todayDate").innerHTML =
+`📅 今天日期：${today.toLocaleDateString("zh-TW")}`;
 
-          let sleepRaw = "23:30"; 
-          let remarkStr = "日常紀錄";
-          
-          // 【智慧特蹤動態掃描】
-          for (let i = 1; i < values.length; i++) {
-            let val = values[i] ? values[i].trim() : "";
-            if (val === "") continue;
+let allData = [];
 
-            // 抓出包含冒號的時間格式
-            if (val.includes(":")) {
-              sleepRaw = val;
-            } 
-            // 抓取非數字且非時間的欄位作為備註（如：坐姿、調整姿勢）
-            else if (isNaN(val) && i >= 4) {
-              if (!val.includes("") && !val.includes("ψ")) {
-                remarkStr = val;
-              }
+let chartInstances = {};
+
+const toNum = v => {
+    const n = Number(v);
+    return isNaN(n) ? 0 : n;
+};
+
+fetch("sport.csv")
+
+.then(res => res.text())
+
+.then(text => {
+
+    const lines = text.trim().split("\n");
+
+    lines.shift();
+
+    allData = lines.map(line => {
+
+        const values = line.split(",");
+
+        if(!values[0]) return null;
+
+        let sleepRaw = "23:30";
+
+        for(let i=0;i<values.length;i++){
+
+            const val = values[i]?.trim();
+
+            if(val && val.includes(":")){
+
+                sleepRaw = val;
             }
-          }
-
-          let sleepHourDecimal = 23.5;
-          try {
-            const parts = sleepRaw.split(":");
-            let hr = Number(parts[0]);
-            let mn = Number(parts[1] || 0);
-            if (hr < 6) hr += 24; // 凌晨兩點半視為 26.5點
-            sleepHourDecimal = hr + (mn / 60);
-          } catch(e) {
-            sleepHourDecimal = 23.5;
-          }
-
-          // 核心自覺判定：24.0點以前入睡（不含24:00）即為達標！
-          let isSuccess = (sleepHourDecimal < 24.0);
-
-          return {
-            date: values[0].trim(),
-            running: Number(values[1] || 0),
-            weight: Number(values[2] || 0),
-            ball: Number(values[3] || 0),
-            assigned: Number(values[4] || 0),
-            trail: Number(values[5] || 0),
-            yoga: Number(values[6] || 0),
-            other: Number(values[7] || 0),
-            speed: values[8] || "",
-            heart_rate: values[9] || "",
-            sleep_hour: sleepHourDecimal,
-            sleep_raw: sleepRaw,
-            remark: remarkStr,
-            is_success: isSuccess // 動態旗標
-          };
-        }).filter(item => item !== null);
-
-        allData.sort((a, b) => new Date(a.date) - new Date(b.date));
-        renderAll();
-      })
-      .catch(err => {
-        console.error("讀取 CSV 錯誤：", err);
-      });
-
-    function renderAll() {
-      const sorted = [...allData].sort((a, b) => new Date(b.date) - new Date(a.date));
-      const recent10 = sorted.slice(0, 10);
-      renderRecentTable(recent10);
-
-      const monthly = {};
-      allData.forEach(item => {
-        const ym = item.date.replace(/\//g, '-').slice(0, 7);
-        if (!monthly[ym]) monthly[ym] = { running: 0, weight: 0, ball: 0, assigned: 0, trail: 0, yoga: 0, other: 0, success_count: 0, total_days: 0 };
-        monthly[ym].running += item.running;
-        monthly[ym].weight += item.weight;
-        monthly[ym].ball += item.ball;
-        monthly[ym].assigned += item.assigned;
-        monthly[ym].trail += item.trail;
-        monthly[ym].yoga += item.yoga;
-        monthly[ym].other += item.other;
-        monthly[ym].total_days += 1;
-        if (item.is_success) {
-          monthly[ym].success_count += 1; // 累加當月成功的次數
         }
-      });
 
-      let labels = Object.keys(monthly).sort();
-      let sums = Object.values(monthly).map(d => ({
-        aerobic: d.running + d.ball + d.trail,
-        assigned: d.assigned,
-        strength: d.weight + d.yoga,
-        success_count: d.success_count, 
-        success_rate: d.total_days ? ((d.success_count / d.total_days) * 100).toFixed(1) : 0 // 當月達成率 %
-      }));
+        let sleepHour = 23.5;
 
-      if (labels.length > 12) {
-        labels = labels.slice(-12);
-        sums = sums.slice(-12);
-      }
+        try{
 
-      renderCharts(labels, sums);
-      renderAverages(sums);
-    }
+            const parts = sleepRaw.split(":");
 
-    function renderRecentTable(data) {
-      const container = document.getElementById("recentTable");
-      container.innerHTML = "";
-      const table = document.createElement("table");
-      const thead = `
-        <thead><tr>
-          <th>日期</th><th>跑步(min)</th><th>肌力訓練</th>
-          <th>球類(min)</th><th>教練指定</th>
-          <th>健行(min)</th><th>游泳</th><th>其他</th><th>跑速</th><th>心率</th><th>入睡時間</th><th>備註</th>
-        </tr></thead>`;
-      const tbody = data.map(r => `
+            let hr = Number(parts[0]);
+
+            let mn = Number(parts[1] || 0);
+
+            if(hr < 6){
+                hr += 24;
+            }
+
+            sleepHour = hr + (mn/60);
+
+        }catch(e){
+
+            sleepHour = 23.5;
+        }
+
+        const isSuccess = sleepHour < 24;
+
+        return {
+
+            date: values[0].trim(),
+
+            running: toNum(values[1]),
+
+            weight: toNum(values[2]),
+
+            ball: toNum(values[3]),
+
+            assigned: toNum(values[4]),
+
+            trail: toNum(values[5]),
+
+            yoga: toNum(values[6]),
+
+            other: toNum(values[7]),
+
+            speed: values[8] || "",
+
+            heart_rate: values[9] || "",
+
+            sleep_raw: sleepRaw,
+
+            sleep_hour: sleepHour,
+
+            is_success: isSuccess,
+
+            remark: values[11] || "日常紀錄"
+        };
+
+    }).filter(x => x);
+
+    allData.sort((a,b)=>
+        new Date(a.date.replace(/\//g,"-")) -
+        new Date(b.date.replace(/\//g,"-"))
+    );
+
+    renderAll();
+
+})
+
+.catch(err => {
+
+    console.error(err);
+
+});
+
+function renderAll(){
+
+    const sorted = [...allData].sort((a,b)=>
+        new Date(b.date.replace(/\//g,"-")) -
+        new Date(a.date.replace(/\//g,"-"))
+    );
+
+    renderRecentTable(sorted.slice(0,10));
+
+    const monthly = {};
+
+    allData.forEach(item=>{
+
+        const ym = item.date.replace(/\//g,"-").slice(0,7);
+
+        if(!monthly[ym]){
+
+            monthly[ym] = {
+
+                aerobic:0,
+
+                assigned:0,
+
+                strength:0,
+
+                success_count:0,
+
+                total_days:0
+            };
+        }
+
+        monthly[ym].aerobic +=
+            item.running +
+            item.ball +
+            item.trail;
+
+        monthly[ym].assigned += item.assigned;
+
+        monthly[ym].strength +=
+            item.weight +
+            item.yoga;
+
+        monthly[ym].total_days += 1;
+
+        if(item.is_success){
+
+            monthly[ym].success_count += 1;
+        }
+
+    });
+
+    const labels = Object.keys(monthly).sort();
+
+    const sums = Object.values(monthly);
+
+    renderCharts(labels,sums);
+
+    renderAverages(sums);
+
+    renderSleepSummary();
+}
+
+function renderRecentTable(data){
+
+    const container = document.getElementById("recentTable");
+
+    const table = document.createElement("table");
+
+    table.innerHTML = `
+    <thead>
         <tr>
-          <td>${r.date}</td>
-          <td>${r.running}</td>
-          <td>${r.weight}</td>
-          <td>${r.ball}</td>
-          <td>${r.assigned}</td>
-          <td>${r.trail}</td>
-          <td>${r.yoga}</td>
-          <td>${r.other}</td>
-          <td>${r.speed}</td>
-          <td>${r.heart_rate}</td>
-          <td style="font-weight:bold; color: ${r.sleep_hour >= 24 ? '#e74a3b':'#1cc88a'}">${r.sleep_raw}</td>
-          <td>${r.remark}</td>
+            <th>日期</th>
+            <th>跑步</th>
+            <th>肌力</th>
+            <th>球類</th>
+            <th>教練指定</th>
+            <th>健行</th>
+            <th>游泳</th>
+            <th>其他</th>
+            <th>入睡時間</th>
+            <th>24點前睡</th>
+            <th>備註</th>
         </tr>
-      `).join("");
-      table.innerHTML = thead + "<tbody>" + tbody + "</tbody>";
-      container.appendChild(table);
+    </thead>
+
+    <tbody>
+
+    ${data.map(r=>`
+
+        <tr>
+
+            <td>${r.date}</td>
+
+            <td>${r.running}</td>
+
+            <td>${r.weight}</td>
+
+            <td>${r.ball}</td>
+
+            <td>${r.assigned}</td>
+
+            <td>${r.trail}</td>
+
+            <td>${r.yoga}</td>
+
+            <td>${r.other}</td>
+
+            <td class="${r.is_success ? 'success':'fail'}">
+                ${r.sleep_raw}
+            </td>
+
+            <td class="${r.is_success ? 'success':'fail'}">
+                ${r.is_success ? '✅':'❌'}
+            </td>
+
+            <td>${r.remark}</td>
+
+        </tr>
+
+    `).join("")}
+
+    </tbody>
+    `;
+
+    container.innerHTML = "";
+
+    container.appendChild(table);
+}
+
+function createChart(id,label,data,color){
+
+    const ctx = document.getElementById(id);
+
+    if(!ctx) return;
+
+    if(chartInstances[id]){
+
+        chartInstances[id].destroy();
     }
 
-    function renderCharts(labels, sums) {
-      const datasets = [
-        { id: "aerobicChart", label: "有氧活動時間", key: "aerobic", color: "#36b9cc" },
-        { id: "assignedChart", label: "教練指定作業", key: "assigned", color: "#f6c23e" },
-        { id: "strengthChart", label: "肌力訓練", key: "strength", color: "#4e73df" }
-      ];
+    chartInstances[id] = new Chart(ctx,{
 
-      datasets.forEach(({ id, label, key, color }) => {
-        try {
-          if (chartInstances[id]) chartInstances[id].destroy();
-          const ctx = document.getElementById(id);
-          chartInstances[id] = new Chart(ctx, {
-            type: "bar",
-            data: {
-              labels,
-              datasets: [{
-                label,
-                data: sums.map(x => x[key]),
-                backgroundColor: color + "99",
-                borderColor: color,
-                borderWidth: 1
-              }]
-            },
-            plugins: [ChartDataLabels],
-            options: {
-              aspectRatio: 4/3,
-              responsive: true,
-              scales: { y: { beginAtZero: true } },
-              plugins: {
-                legend: { display: false },
-                datalabels: {
-                  color: '#111',
-                  anchor: 'center',
-                  align: 'center',
-                  font: { weight: 'bold', size: 12 },
-                  formatter: value => value
-                }
-              }
-            }
-          });
-        } catch(e) { console.error(e); }
-      });
+        type:"bar",
 
-      // 🛌 終極加碼：24點前關機達成次數與達成率 (%) 統計圖
-      const sleepId = "sleepChart";
-      try {
-        if (chartInstances[sleepId]) chartInstances[sleepId].destroy();
-        const sleepCtx = document.getElementById(sleepId);
-        
-        chartInstances[sleepId] = new Chart(sleepCtx, {
-          type: "bar",
-          data: {
+        data:{
+
             labels,
-            datasets: [{
-              label: "自覺關機次數",
-              data: sums.map(x => x.success_count),
-              // 動態行為定價變色：當月達成率大於等於 75.0% 顯示高雅自覺綠，否則呈現警告紅
-              backgroundColor: sums.map(x => x.success_rate >= 75.0 ? "#1cc88a99" : "#e74a3b99"),
-              borderColor: sums.map(x => x.success_rate >= 75.0 ? "#1cc88a" : "#e74a3b"),
-              borderWidth: 1
-            }]
-          },
-          plugins: [ChartDataLabels],
-          options: {
-            aspectRatio: 4/3,
-            responsive: true,
-            scales: { 
-              y: { 
-                beginAtZero: true,
-                title: { display: true, text: "達成天數 (天)" }
-              } 
-            },
-            plugins: {
-              legend: { display: false },
-              datalabels: {
-                color: '#111',
-                anchor: 'end',
-                align: 'top',
-                font: { weight: 'bold', size: 11 },
-                formatter: (value, context) => {
-                  // 圖表上方同時精美顯示：達成天數 與 當月達成百分比 %
-                  const idx = context.dataIndex;
-                  const rate = sums[idx].success_rate;
-                  return `${value}天 (${rate}%)`;
-                }
-              }
-            }
-          }
-        });
-      } catch(e) { console.error(e); }
-    }
 
-    function renderAverages(sums) {
-      const avg = arr => arr.length ? (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1) : 0;
-      document.getElementById("avgAerobic").innerText = `📊 平均：${avg(sums.map(x => x.aerobic))} 分鐘/月`;
-      document.getElementById("avgAssigned").innerText = `📊 平均：${avg(sums.map(x => x.assigned))} 次/月`;
-      document.getElementById("avgStrength").innerText = `📊 平均：${avg(sums.map(x => x.strength))} 次/月`;
-      
-      const totalSuccess = sums.reduce((a, b) => a + b.success_count, 0);
-      document.getElementById("avgSleep").innerText = `🛌 歷史累計自覺關機總天數：${totalSuccess} 天`;
-    }
-  </script>
+            datasets:[{
+
+                label,
+
+                data,
+
+                backgroundColor:color + "99",
+
+                borderColor:color,
+
+                borderWidth:1
+            }]
+        },
+
+        plugins:[ChartDataLabels],
+
+        options:{
+
+            responsive:true,
+
+            plugins:{
+
+                legend:{display:false},
+
+                datalabels:{
+
+                    color:"#111",
+
+                    anchor:"end",
+
+                    align:"top",
+
+                    font:{
+                        weight:"bold"
+                    }
+                }
+            },
+
+            scales:{
+                y:{
+                    beginAtZero:true
+                }
+            }
+        }
+    });
+}
+
+let labels = [];
+
+function renderCharts(lbls,sums){
+
+    labels = lbls;
+
+    createChart(
+        "aerobicChart",
+        "有氧",
+        sums.map(x=>x.aerobic),
+        "#36b9cc"
+    );
+
+    createChart(
+        "assignedChart",
+        "教練指定",
+        sums.map(x=>x.assigned),
+        "#f6c23e"
+    );
+
+    createChart(
+        "strengthChart",
+        "肌力",
+        sums.map(x=>x.strength),
+        "#4e73df"
+    );
+
+    createChart(
+        "sleepChart",
+        "24點前睡",
+        sums.map(x=>x.success_count),
+        "#1cc88a"
+    );
+}
+
+function renderAverages(sums){
+
+    const avg = arr =>
+        arr.length
+        ? (arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(1)
+        : 0;
+
+    document.getElementById("avgAerobic").innerHTML =
+        `平均 ${avg(sums.map(x=>x.aerobic))} 分鐘/月`;
+
+    document.getElementById("avgAssigned").innerHTML =
+        `平均 ${avg(sums.map(x=>x.assigned))} 次/月`;
+
+    document.getElementById("avgStrength").innerHTML =
+        `平均 ${avg(sums.map(x=>x.strength))} 次/月`;
+
+    document.getElementById("avgSleep").innerHTML =
+        `平均 ${avg(sums.map(x=>x.success_count))} 天/月`;
+}
+
+function renderSleepSummary(){
+
+    const totalDays = allData.length;
+
+    const successDays =
+        allData.filter(x=>x.is_success).length;
+
+    const rate =
+        ((successDays / totalDays) * 100).toFixed(1);
+
+    document.getElementById("sleepSummary").innerHTML =
+
+    `
+    🛌 24點前睡覺成功：<b>${successDays}</b> 天
+    <br>
+    📊 睡眠達標率：<b>${rate}%</b>
+    `;
+}
+
+</script>
+
 </body>
 </html>
-
+```
 
 
