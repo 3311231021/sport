@@ -1,6 +1,7 @@
 ```html
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -10,12 +11,13 @@
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<!-- DataLabels -->
+<!-- chartjs-plugin-datalabels -->
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
 
 <style>
+
 body{
-    font-family: "Segoe UI", Arial, sans-serif;
+    font-family:"Segoe UI", Arial, sans-serif;
     margin:20px;
     background:#f5f6fa;
     color:#333;
@@ -32,18 +34,13 @@ h1{
     margin-bottom:20px;
 }
 
-h2{
-    margin-top:25px;
-}
-
 .summary-box{
     background:white;
-    padding:15px;
     border-radius:12px;
+    padding:15px;
     box-shadow:0 2px 8px rgba(0,0,0,0.08);
     margin-bottom:20px;
     text-align:center;
-    font-size:16px;
     line-height:1.8;
 }
 
@@ -62,7 +59,7 @@ table{
     box-shadow:0 2px 8px rgba(0,0,0,0.08);
 }
 
-th,td{
+th, td{
     border:1px solid #ddd;
     padding:8px;
     text-align:center;
@@ -88,7 +85,6 @@ th{
 
 .chart-box h3{
     text-align:center;
-    margin-bottom:10px;
 }
 
 .avg-box{
@@ -113,14 +109,16 @@ canvas{
 }
 
 @media(max-width:600px){
+
     body{
         margin:10px;
     }
 
-    th,td{
+    th, td{
         font-size:11px;
     }
 }
+
 </style>
 </head>
 
@@ -177,10 +175,12 @@ let allData = [];
 
 let chartInstances = {};
 
-const toNum = v => {
+function toNum(v){
+
     const n = Number(v);
+
     return isNaN(n) ? 0 : n;
-};
+}
 
 fetch("sport.csv")
 
@@ -190,70 +190,71 @@ fetch("sport.csv")
 
     const lines = text.trim().split("\n");
 
-    lines.shift();
+    const headers = lines.shift().split(",");
 
     allData = lines.map(line => {
 
         const values = line.split(",");
 
-        if(!values[0]) return null;
+        const row = {};
 
-        let sleepRaw = "23:30";
+        headers.forEach((h, i) => {
 
-        for(let i=0;i<values.length;i++){
+            row[h.trim()] = values[i]
+                ? values[i].trim()
+                : "";
+        });
 
-            const val = values[i]?.trim();
+        let sleepRaw = row.sleep || "";
 
-            if(val && val.includes(":")){
+        let sleepHour = 99;
 
-                sleepRaw = val;
+        if(sleepRaw.includes(":")){
+
+            try{
+
+                const parts = sleepRaw.split(":");
+
+                let hr = Number(parts[0]);
+
+                let mn = Number(parts[1] || 0);
+
+                if(hr < 6){
+                    hr += 24;
+                }
+
+                sleepHour = hr + (mn / 60);
+
+            }catch(e){
+
+                sleepHour = 99;
             }
         }
 
-        let sleepHour = 23.5;
-
-        try{
-
-            const parts = sleepRaw.split(":");
-
-            let hr = Number(parts[0]);
-
-            let mn = Number(parts[1] || 0);
-
-            if(hr < 6){
-                hr += 24;
-            }
-
-            sleepHour = hr + (mn/60);
-
-        }catch(e){
-
-            sleepHour = 23.5;
-        }
-
-        const isSuccess = sleepHour < 24;
+        const isSuccess =
+            sleepHour < 24;
 
         return {
 
-            date: values[0].trim(),
+            date: row.date,
 
-            running: toNum(values[1]),
+            running: toNum(row.running),
 
-            weight: toNum(values[2]),
+            weight: toNum(row.weight),
 
-            ball: toNum(values[3]),
+            ball: toNum(row.ball),
 
-            assigned: toNum(values[4]),
+            assigned: toNum(row.assigned),
 
-            trail: toNum(values[5]),
+            trail: toNum(row.trail),
 
-            yoga: toNum(values[6]),
+            yoga: toNum(row.yoga),
 
-            other: toNum(values[7]),
+            other: toNum(row.other),
 
-            speed: values[8] || "",
+            speed: row.speed,
 
-            heart_rate: values[9] || "",
+            heart_rate: row.heart_rate,
 
             sleep_raw: sleepRaw,
 
@@ -261,12 +262,13 @@ fetch("sport.csv")
 
             is_success: isSuccess,
 
-            remark: values[11] || "日常紀錄"
+            remark: row.remark || "日常紀錄"
         };
 
-    }).filter(x => x);
+    }).filter(x => x.date);
 
     allData.sort((a,b)=>
+
         new Date(a.date.replace(/\//g,"-")) -
         new Date(b.date.replace(/\//g,"-"))
     );
@@ -277,13 +279,14 @@ fetch("sport.csv")
 
 .catch(err => {
 
-    console.error(err);
+    console.error("CSV讀取失敗:", err);
 
 });
 
 function renderAll(){
 
     const sorted = [...allData].sort((a,b)=>
+
         new Date(b.date.replace(/\//g,"-")) -
         new Date(a.date.replace(/\//g,"-"))
     );
@@ -292,9 +295,10 @@ function renderAll(){
 
     const monthly = {};
 
-    allData.forEach(item=>{
+    allData.forEach(item => {
 
-        const ym = item.date.replace(/\//g,"-").slice(0,7);
+        const ym =
+            item.date.replace(/\//g,"-").slice(0,7);
 
         if(!monthly[ym]){
 
@@ -317,7 +321,8 @@ function renderAll(){
             item.ball +
             item.trail;
 
-        monthly[ym].assigned += item.assigned;
+        monthly[ym].assigned +=
+            item.assigned;
 
         monthly[ym].strength +=
             item.weight +
@@ -332,11 +337,13 @@ function renderAll(){
 
     });
 
-    const labels = Object.keys(monthly).sort();
+    const labels =
+        Object.keys(monthly).sort();
 
-    const sums = Object.values(monthly);
+    const sums =
+        Object.values(monthly);
 
-    renderCharts(labels,sums);
+    renderCharts(labels, sums);
 
     renderAverages(sums);
 
@@ -345,11 +352,14 @@ function renderAll(){
 
 function renderRecentTable(data){
 
-    const container = document.getElementById("recentTable");
+    const container =
+        document.getElementById("recentTable");
 
-    const table = document.createElement("table");
+    const table =
+        document.createElement("table");
 
     table.innerHTML = `
+
     <thead>
         <tr>
             <th>日期</th>
@@ -368,7 +378,7 @@ function renderRecentTable(data){
 
     <tbody>
 
-    ${data.map(r=>`
+    ${data.map(r => `
 
         <tr>
 
@@ -389,7 +399,7 @@ function renderRecentTable(data){
             <td>${r.other}</td>
 
             <td class="${r.is_success ? 'success':'fail'}">
-                ${r.sleep_raw}
+                ${r.sleep_raw || '-'}
             </td>
 
             <td class="${r.is_success ? 'success':'fail'}">
@@ -410,9 +420,10 @@ function renderRecentTable(data){
     container.appendChild(table);
 }
 
-function createChart(id,label,data,color){
+function createChart(id, labels, data, color){
 
-    const ctx = document.getElementById(id);
+    const ctx =
+        document.getElementById(id);
 
     if(!ctx) return;
 
@@ -421,7 +432,7 @@ function createChart(id,label,data,color){
         chartInstances[id].destroy();
     }
 
-    chartInstances[id] = new Chart(ctx,{
+    chartInstances[id] = new Chart(ctx, {
 
         type:"bar",
 
@@ -431,13 +442,11 @@ function createChart(id,label,data,color){
 
             datasets:[{
 
-                label,
-
                 data,
 
-                backgroundColor:color + "99",
+                backgroundColor: color + "99",
 
-                borderColor:color,
+                borderColor: color,
 
                 borderWidth:1
             }]
@@ -451,7 +460,9 @@ function createChart(id,label,data,color){
 
             plugins:{
 
-                legend:{display:false},
+                legend:{
+                    display:false
+                },
 
                 datalabels:{
 
@@ -476,37 +487,33 @@ function createChart(id,label,data,color){
     });
 }
 
-let labels = [];
-
-function renderCharts(lbls,sums){
-
-    labels = lbls;
+function renderCharts(labels, sums){
 
     createChart(
         "aerobicChart",
-        "有氧",
-        sums.map(x=>x.aerobic),
+        labels,
+        sums.map(x => x.aerobic),
         "#36b9cc"
     );
 
     createChart(
         "assignedChart",
-        "教練指定",
-        sums.map(x=>x.assigned),
+        labels,
+        sums.map(x => x.assigned),
         "#f6c23e"
     );
 
     createChart(
         "strengthChart",
-        "肌力",
-        sums.map(x=>x.strength),
+        labels,
+        sums.map(x => x.strength),
         "#4e73df"
     );
 
     createChart(
         "sleepChart",
-        "24點前睡",
-        sums.map(x=>x.success_count),
+        labels,
+        sums.map(x => x.success_count),
         "#1cc88a"
     );
 }
@@ -514,6 +521,7 @@ function renderCharts(lbls,sums){
 function renderAverages(sums){
 
     const avg = arr =>
+
         arr.length
         ? (arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(1)
         : 0;
@@ -533,13 +541,16 @@ function renderAverages(sums){
 
 function renderSleepSummary(){
 
-    const totalDays = allData.length;
+    const totalDays =
+        allData.filter(x => x.sleep_raw).length;
 
     const successDays =
-        allData.filter(x=>x.is_success).length;
+        allData.filter(x => x.is_success).length;
 
     const rate =
-        ((successDays / totalDays) * 100).toFixed(1);
+        totalDays
+        ? ((successDays / totalDays) * 100).toFixed(1)
+        : 0;
 
     document.getElementById("sleepSummary").innerHTML =
 
@@ -555,5 +566,3 @@ function renderSleepSummary(){
 </body>
 </html>
 ```
-
-
