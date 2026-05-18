@@ -3,10 +3,26 @@
 <html lang="zh-TW">
 
 <head>
+
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<meta name="viewport"
+content="width=device-width, initial-scale=1.0">
 
 <title>健康管理與運動記錄系統</title>
+
+<!-- LINE / FB 預覽 -->
+<meta property="og:title"
+content="健康管理與運動記錄系統">
+
+<meta property="og:description"
+content="個人健康與運動追蹤 Dashboard">
+
+<meta property="og:type"
+content="website">
+
+<meta name="description"
+content="健康管理與運動紀錄系統">
 
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -73,11 +89,15 @@ th,td{
 
 th{
     background:#f1f1f1;
+    position:sticky;
+    top:0;
+    z-index:2;
 }
 
 .chart-container{
     display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+    grid-template-columns:
+    repeat(auto-fit,minmax(300px,1fr));
     gap:20px;
 }
 
@@ -135,7 +155,9 @@ canvas{
 
 <div id="todayDate"></div>
 
-<h2>🎯 Target 每週至少運動3次 ＆ 每日 24點前 睡覺</h2>
+<h2>
+🎯 Target 每週至少運動3次 ＆ 每日24點前睡覺
+</h2>
 
 <div class="summary-box" id="sleepSummary"></div>
 
@@ -189,57 +211,116 @@ function toNum(v){
     return isNaN(n) ? 0 : n;
 }
 
+function parseCSVLine(line){
+
+    const result = [];
+
+    let current = "";
+
+    let inQuotes = false;
+
+    for(let i=0;i<line.length;i++){
+
+        const char = line[i];
+
+        if(char === '"'){
+
+            inQuotes = !inQuotes;
+
+        }else if(char === ',' && !inQuotes){
+
+            result.push(current);
+
+            current = "";
+
+        }else{
+
+            current += char;
+        }
+    }
+
+    result.push(current);
+
+    return result;
+}
+
+function normalizeSleepHour(timeStr){
+
+    if(!timeStr.includes(":")) return null;
+
+    const [h,m] =
+        timeStr.split(":").map(Number);
+
+    let hour = h + (m / 60);
+
+    // 凌晨視為隔天
+    if(hour < 6){
+        hour += 24;
+    }
+
+    return hour;
+}
+
 fetch("sport.csv")
 
 .then(res => res.text())
 
 .then(text => {
 
-    const lines = text.trim().split("\n");
+    localStorage.setItem("sportData",text);
 
-    const headers = lines.shift().split(",");
+    processCSV(text);
+
+})
+
+.catch(err => {
+
+    console.error("CSV讀取失敗:",err);
+
+    const cache =
+        localStorage.getItem("sportData");
+
+    if(cache){
+
+        processCSV(cache);
+
+    }else{
+
+        alert("CSV讀取失敗");
+    }
+});
+
+function processCSV(text){
+
+    const lines =
+        text.trim().split("\n");
+
+    const headers =
+        parseCSVLine(lines.shift());
 
     allData = lines.map(line => {
 
-        const values = line.split(",");
+        const values =
+            parseCSVLine(line);
 
         const row = {};
 
         headers.forEach((h,i)=>{
 
-            row[h.trim()] = values[i]
+            row[h.trim()] =
+                values[i]
                 ? values[i].trim()
                 : "";
         });
 
-        let sleepRaw = row.sleep || "";
+        const sleepRaw =
+            row.sleep || "";
 
-        let sleepHour = 99;
-
-        if(sleepRaw.includes(":")){
-
-            try{
-
-                const parts = sleepRaw.split(":");
-
-                let hr = Number(parts[0]);
-
-                let mn = Number(parts[1] || 0);
-
-                // 凌晨時間視為隔天
-                if(hr < 6){
-                    hr += 24;
-                }
-
-                sleepHour = hr + mn / 60;
-
-            }catch(e){
-
-                sleepHour = 99;
-            }
-        }
+        const sleepHour =
+            normalizeSleepHour(sleepRaw);
 
         const isSuccess =
+            sleepHour !== null &&
             sleepHour < 24;
 
         return {
@@ -270,7 +351,8 @@ fetch("sport.csv")
 
             is_success: isSuccess,
 
-            remark: row.remark || "日常紀錄"
+            remark:
+                row.remark || "日常紀錄"
         };
 
     }).filter(x => x.date);
@@ -282,14 +364,7 @@ fetch("sport.csv")
     );
 
     renderAll();
-
-})
-
-.catch(err => {
-
-    console.error("CSV讀取失敗:", err);
-
-});
+}
 
 function renderAll(){
 
@@ -306,7 +381,8 @@ function renderAll(){
     allData.forEach(item => {
 
         const ym =
-            item.date.replace(/\//g,"-").slice(0,7);
+            item.date.replace(/\//g,"-")
+            .slice(0,7);
 
         if(!monthly[ym]){
 
@@ -318,9 +394,7 @@ function renderAll(){
 
                 strength:0,
 
-                success_count:0,
-
-                total_days:0
+                success_count:0
             };
         }
 
@@ -336,13 +410,10 @@ function renderAll(){
             item.weight +
             item.yoga;
 
-        monthly[ym].total_days += 1;
-
         if(item.is_success){
 
             monthly[ym].success_count += 1;
         }
-
     });
 
     const labels =
@@ -376,7 +447,7 @@ function renderRecentTable(data){
             <th>球類</th>
             <th>教練指定</th>
             <th>健行</th>
-            <th>游泳</th>
+            <th>瑜珈</th>
             <th>其他</th>
             <th>入睡時間</th>
             <th>24點前睡</th>
@@ -435,7 +506,7 @@ function createChart(id, labels, data, color){
 
     if(!ctx) return;
 
-    if(chartInstances[id]){
+    if(chartInstances[id] instanceof Chart){
 
         chartInstances[id].destroy();
     }
@@ -531,7 +602,10 @@ function renderAverages(sums){
     const avg = arr =>
 
         arr.length
-        ? (arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(1)
+        ? (
+            arr.reduce((a,b)=>a+b,0)
+            / arr.length
+        ).toFixed(1)
         : 0;
 
     document.getElementById("avgAerobic").innerHTML =
@@ -557,15 +631,21 @@ function renderSleepSummary(){
 
     const rate =
         totalDays
-        ? ((successDays / totalDays) * 100).toFixed(1)
+        ? (
+            (successDays / totalDays) * 100
+        ).toFixed(1)
         : 0;
 
     document.getElementById("sleepSummary").innerHTML =
 
     `
-    🛌 24點前睡覺成功：<b>${successDays}</b> 天
+    🛌 24點前睡覺成功：
+    <b>${successDays}</b> 天
+
     <br>
-    📊 睡眠達標率：<b>${rate}%</b>
+
+    📊 睡眠達標率：
+    <b>${rate}%</b>
     `;
 }
 
@@ -573,3 +653,4 @@ function renderSleepSummary(){
 
 </body>
 </html>
+
