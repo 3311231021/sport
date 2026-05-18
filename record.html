@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8" />
-  <title>健康管理與運動記錄系統</title>
+  <title>健康 management 與運動記錄系統</title>
   <script src="https://jsdelivr.net"></script>
   <script src="https://jsdelivr.net"></script>
   <style>
@@ -113,7 +113,13 @@
         const headers = lines.shift().split(",");
 
         allData = lines.map(line => {
-          const values = line.split(",");
+          // 先用逗號切開
+          let values = line.split(",");
+          
+          // 【核心抗崩潰機制】如果 Excel 自動裁切了行尾的空白欄位，手動用空字串將陣列動態補齊到 12 個欄位
+          while (values.length < 12) {
+            values.push("");
+          }
           
           // 預設與容錯變數設定
           let sleepRaw = "23:30"; 
@@ -182,6 +188,9 @@
           };
         });
 
+        // 過濾掉無效日期行，避免報錯
+        allData = allData.filter(item => item.date && item.date.trim() !== "");
+        
         allData.sort((a, b) => new Date(a.date) - new Date(b.date));
         renderAll();
       })
@@ -259,7 +268,6 @@
     }
 
     function renderCharts(labels, sums) {
-      // 渲染前三個運動圖表
       const datasets = [
         { id: "aerobicChart", label: "有氧活動時間", key: "aerobic", color: "#36b9cc" },
         { id: "assignedChart", label: "教練指定作業", key: "assigned", color: "#f6c23e" },
@@ -312,7 +320,6 @@
           datasets: [{
             label: "平均入睡時間點",
             data: sums.map(x => x.sleep_avg),
-            // 行為經濟學機制：超過 24 點（12:00 AM）自動觸變為警告紅，否則為自覺綠
             backgroundColor: sums.map(x => x.sleep_avg >= 24 ? "#e74a3b99" : "#1cc88a99"),
             borderColor: sums.map(x => x.sleep_avg >= 24 ? "#e74a3b" : "#1cc88a"),
             borderWidth: 1
@@ -369,4 +376,5 @@
   </script>
 </body>
 </html>
+
 
