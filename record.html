@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8" />
-  <title>健康 management 與運動記錄系統</title>
+  <title>健康管理與運動記錄系統</title>
   <script src="https://jsdelivr.net"></script>
   <script src="https://jsdelivr.net"></script>
   <style>
@@ -87,16 +87,15 @@
       <canvas id="strengthChart"></canvas>
       <div class="avg-box" id="avgStrength"></div>
     </div>
-    <!-- 🛌 智慧生活防禦 Dashboard -->
+    <!-- 🛌 核心優化：統計 24點前自覺關機的達成次數與百分比率 -->
     <div class="chart-box">
-      <h3>🛌 自覺生活防禦：入睡時間統計 (點)</h3>
+      <h3>🛌 自覺生活防禦：24點前關機達成次數 (次)</h3>
       <canvas id="sleepChart"></canvas>
       <div class="avg-box" id="avgSleep"></div>
     </div>
   </div>
 
   <script>
-    // 顯示今天日期
     const todayElement = document.getElementById("todayDate");
     const today = new Date();
     const options = { year: "numeric", month: "long", day: "numeric", weekday: "long" };
@@ -105,7 +104,6 @@
     let allData = [];
     let chartInstances = {};
 
-    // 讀取 CSV
     fetch("sport.csv")
       .then(res => res.text())
       .then(text => {
@@ -113,66 +111,45 @@
         const headers = lines.shift().split(",");
 
         allData = lines.map(line => {
-          // 先用逗號切開
           let values = line.split(",");
-          
-          // 【核心抗崩潰機制】如果 Excel 自動裁切了行尾的空白欄位，手動用空字串將陣列動態補齊到 12 個欄位
-          while (values.length < 12) {
-            values.push("");
-          }
-          
-          // 預設與容錯變數設定
-          let sleepRaw = "23:30"; 
-          let remarkStr = "";
-          
-          // 對應 Excel 結構：K欄(Index 10)是入睡時間，L欄(Index 11)是備註
-          let kVal = values[10] ? values[10].trim() : "";
-          let lVal = values[11] ? values[11].trim() : "";
+          if (!values || values[0].trim() === "") return null;
 
-          // 【智慧型欄位對帳演算法】
-          if (kVal.includes(":")) {
-            // 情況一：K欄具備標準時間格式 (如 22:45, 23:00) -> 完美對齊
-            sleepRaw = kVal;
-            remarkStr = lVal;
-          } else {
-            // 情況二：K欄不是時間，代表舊資料可能因為空白欄位而發生往左平移錯位
-            sleepRaw = "23:30"; // 舊資料自動補齊健康的自覺防禦線
-            
-            // 排除轉換失敗的亂碼，抓取真正的文字備註（如：坐姿、調整姿勢）
-            if (kVal !== "" && !kVal.includes("") && !kVal.includes("ψ")) {
-              remarkStr = kVal; 
-            } else if (lVal !== "" && !lVal.includes("") && !lVal.includes("ψ")) {
-              remarkStr = lVal;
-            } else {
-              // 防護網：若嚴重錯位，由後往前巡檢，把中文字串撈回備註
-              remarkStr = "";
-              for (let i = 8; i < values.length; i++) {
-                if (values[i] && !values[i].includes(":") && isNaN(values[i])) {
-                  let temp = values[i].trim();
-                  if (!temp.includes("") && !temp.includes("ψ")) {
-                    remarkStr = temp;
-                    break;
-                  }
-                }
+          let sleepRaw = "23:30"; 
+          let remarkStr = "日常紀錄";
+          
+          // 【智慧特蹤動態掃描】
+          for (let i = 1; i < values.length; i++) {
+            let val = values[i] ? values[i].trim() : "";
+            if (val === "") continue;
+
+            // 抓出包含冒號的時間格式
+            if (val.includes(":")) {
+              sleepRaw = val;
+            } 
+            // 抓取非數字且非時間的欄位作為備註（如：坐姿、調整姿勢）
+            else if (isNaN(val) && i >= 4) {
+              if (!val.includes("") && !val.includes("ψ")) {
+                remarkStr = val;
               }
             }
           }
 
-          // 如果備註為空或仍含有編碼亂碼，一律無痕修復為日常紀錄
-          if (remarkStr === "" || remarkStr.includes("") || remarkStr.includes("ψ")) {
-            remarkStr = "日常紀錄"; 
+          let sleepHourDecimal = 23.5;
+          try {
+            const parts = sleepRaw.split(":");
+            let hr = Number(parts[0]);
+            let mn = Number(parts[1] || 0);
+            if (hr < 6) hr += 24; // 凌晨兩點半視為 26.5點
+            sleepHourDecimal = hr + (mn / 60);
+          } catch(e) {
+            sleepHourDecimal = 23.5;
           }
 
-          // 計算數值化入睡時間點 (供 Chart.js 計算與變色)
-          let sleepHourDecimal = 23.5;
-          const parts = sleepRaw.split(":");
-          let hr = Number(parts[0]);
-          let mn = Number(parts[1] || 0);
-          if (hr < 6) hr += 24; // 跨夜凌晨算作 24點之後
-          sleepHourDecimal = hr + (mn / 60);
+          // 核心自覺判定：24.0點以前入睡（不含24:00）即為達標！
+          let isSuccess = (sleepHourDecimal < 24.0);
 
           return {
-            date: values[0],
+            date: values[0].trim(),
             running: Number(values[1] || 0),
             weight: Number(values[2] || 0),
             ball: Number(values[3] || 0),
@@ -184,19 +161,16 @@
             heart_rate: values[9] || "",
             sleep_hour: sleepHourDecimal,
             sleep_raw: sleepRaw,
-            remark: remarkStr
+            remark: remarkStr,
+            is_success: isSuccess // 動態旗標
           };
-        });
+        }).filter(item => item !== null);
 
-        // 過濾掉無效日期行，避免報錯
-        allData = allData.filter(item => item.date && item.date.trim() !== "");
-        
         allData.sort((a, b) => new Date(a.date) - new Date(b.date));
         renderAll();
       })
       .catch(err => {
         console.error("讀取 CSV 錯誤：", err);
-        alert("無法讀取 sport.csv，請確認檔案存在且格式正確。");
       });
 
     function renderAll() {
@@ -206,9 +180,8 @@
 
       const monthly = {};
       allData.forEach(item => {
-        if (!item.date) return;
         const ym = item.date.replace(/\//g, '-').slice(0, 7);
-        if (!monthly[ym]) monthly[ym] = { running: 0, weight: 0, ball: 0, assigned: 0, trail: 0, yoga: 0, other: 0, sleep_sum: 0, count: 0 };
+        if (!monthly[ym]) monthly[ym] = { running: 0, weight: 0, ball: 0, assigned: 0, trail: 0, yoga: 0, other: 0, success_count: 0, total_days: 0 };
         monthly[ym].running += item.running;
         monthly[ym].weight += item.weight;
         monthly[ym].ball += item.ball;
@@ -216,8 +189,10 @@
         monthly[ym].trail += item.trail;
         monthly[ym].yoga += item.yoga;
         monthly[ym].other += item.other;
-        monthly[ym].sleep_sum += item.sleep_hour;
-        monthly[ym].count += 1;
+        monthly[ym].total_days += 1;
+        if (item.is_success) {
+          monthly[ym].success_count += 1; // 累加當月成功的次數
+        }
       });
 
       let labels = Object.keys(monthly).sort();
@@ -225,7 +200,8 @@
         aerobic: d.running + d.ball + d.trail,
         assigned: d.assigned,
         strength: d.weight + d.yoga,
-        sleep_avg: d.count ? Number((d.sleep_sum / d.count).toFixed(2)) : 23.5
+        success_count: d.success_count, 
+        success_rate: d.total_days ? ((d.success_count / d.total_days) * 100).toFixed(1) : 0 // 當月達成率 %
       }));
 
       if (labels.length > 12) {
@@ -275,17 +251,57 @@
       ];
 
       datasets.forEach(({ id, label, key, color }) => {
-        if (chartInstances[id]) chartInstances[id].destroy();
-        const ctx = document.getElementById(id);
-        chartInstances[id] = new Chart(ctx, {
+        try {
+          if (chartInstances[id]) chartInstances[id].destroy();
+          const ctx = document.getElementById(id);
+          chartInstances[id] = new Chart(ctx, {
+            type: "bar",
+            data: {
+              labels,
+              datasets: [{
+                label,
+                data: sums.map(x => x[key]),
+                backgroundColor: color + "99",
+                borderColor: color,
+                borderWidth: 1
+              }]
+            },
+            plugins: [ChartDataLabels],
+            options: {
+              aspectRatio: 4/3,
+              responsive: true,
+              scales: { y: { beginAtZero: true } },
+              plugins: {
+                legend: { display: false },
+                datalabels: {
+                  color: '#111',
+                  anchor: 'center',
+                  align: 'center',
+                  font: { weight: 'bold', size: 12 },
+                  formatter: value => value
+                }
+              }
+            }
+          });
+        } catch(e) { console.error(e); }
+      });
+
+      // 🛌 終極加碼：24點前關機達成次數與達成率 (%) 統計圖
+      const sleepId = "sleepChart";
+      try {
+        if (chartInstances[sleepId]) chartInstances[sleepId].destroy();
+        const sleepCtx = document.getElementById(sleepId);
+        
+        chartInstances[sleepId] = new Chart(sleepCtx, {
           type: "bar",
           data: {
             labels,
             datasets: [{
-              label,
-              data: sums.map(x => x[key]),
-              backgroundColor: color + "99",
-              borderColor: color,
+              label: "自覺關機次數",
+              data: sums.map(x => x.success_count),
+              // 動態行為定價變色：當月達成率大於等於 75.0% 顯示高雅自覺綠，否則呈現警告紅
+              backgroundColor: sums.map(x => x.success_rate >= 75.0 ? "#1cc88a99" : "#e74a3b99"),
+              borderColor: sums.map(x => x.success_rate >= 75.0 ? "#1cc88a" : "#e74a3b"),
               borderWidth: 1
             }]
           },
@@ -293,72 +309,30 @@
           options: {
             aspectRatio: 4/3,
             responsive: true,
-            scales: { y: { beginAtZero: true } },
+            scales: { 
+              y: { 
+                beginAtZero: true,
+                title: { display: true, text: "達成天數 (天)" }
+              } 
+            },
             plugins: {
               legend: { display: false },
               datalabels: {
                 color: '#111',
-                anchor: 'center',
-                align: 'center',
-                font: { weight: 'bold', size: 12 },
-                formatter: value => value
+                anchor: 'end',
+                align: 'top',
+                font: { weight: 'bold', size: 11 },
+                formatter: (value, context) => {
+                  // 圖表上方同時精美顯示：達成天數 與 當月達成百分比 %
+                  const idx = context.dataIndex;
+                  const rate = sums[idx].success_rate;
+                  return `${value}天 (${rate}%)`;
+                }
               }
             }
           }
         });
-      });
-
-      // 🛌 智慧變色睡眠防禦圖表
-      const sleepId = "sleepChart";
-      if (chartInstances[sleepId]) chartInstances[sleepId].destroy();
-      const sleepCtx = document.getElementById(sleepId);
-      
-      chartInstances[sleepId] = new Chart(sleepCtx, {
-        type: "bar",
-        data: {
-          labels,
-          datasets: [{
-            label: "平均入睡時間點",
-            data: sums.map(x => x.sleep_avg),
-            backgroundColor: sums.map(x => x.sleep_avg >= 24 ? "#e74a3b99" : "#1cc88a99"),
-            borderColor: sums.map(x => x.sleep_avg >= 24 ? "#e74a3b" : "#1cc88a"),
-            borderWidth: 1
-          }]
-        },
-        plugins: [ChartDataLabels],
-        options: {
-          aspectRatio: 4/3,
-          responsive: true,
-          scales: { 
-            y: { 
-              min: 20, 
-              max: 27, 
-              title: { display: true, text: "時間 (24小時制)" },
-              ticks: {
-                callback: function(value) {
-                  if(value >= 24) return "凌晨 " + (value - 24) + " 點";
-                  return "晚上 " + value + " 點";
-                }
-              }
-            } 
-          },
-          plugins: {
-            legend: { display: false },
-            datalabels: {
-              color: '#111',
-              anchor: 'end',
-              align: 'top',
-              font: { weight: 'bold', size: 11 },
-              formatter: value => {
-                let hr = Math.floor(value);
-                let mn = Math.round((value - hr) * 60);
-                if (hr >= 24) hr -= 24;
-                return `${String(hr).padStart(2, '0')}:${String(mn).padStart(2, '0')}`;
-              }
-            }
-          }
-        }
-      });
+      } catch(e) { console.error(e); }
     }
 
     function renderAverages(sums) {
@@ -367,14 +341,12 @@
       document.getElementById("avgAssigned").innerText = `📊 平均：${avg(sums.map(x => x.assigned))} 次/月`;
       document.getElementById("avgStrength").innerText = `📊 平均：${avg(sums.map(x => x.strength))} 次/月`;
       
-      const rawSleepAvg = sums.length ? sums.reduce((a,b)=>a+b.sleep_avg, 0)/sums.length : 23.5;
-      let hr = Math.floor(rawSleepAvg);
-      let mn = Math.round((rawSleepAvg - hr) * 60);
-      if(hr >= 24) hr -= 24;
-      document.getElementById("avgSleep").innerText = `🛌 總體平均入睡時間：${String(hr).padStart(2, '0')}:${String(mn).padStart(2, '0')}`;
+      const totalSuccess = sums.reduce((a, b) => a + b.success_count, 0);
+      document.getElementById("avgSleep").innerText = `🛌 歷史累計自覺關機總天數：${totalSuccess} 天`;
     }
   </script>
 </body>
 </html>
+
 
 
