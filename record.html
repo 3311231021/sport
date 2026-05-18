@@ -3,21 +3,21 @@
 <html lang="zh-TW">
 
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>健康管理與運動記錄系統</title>
 
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<!-- chartjs-plugin-datalabels -->
+<!-- Chart DataLabels -->
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
 
 <style>
 
 body{
-    font-family:"Segoe UI", Arial, sans-serif;
+    font-family:"Segoe UI",Arial,sans-serif;
     margin:20px;
     background:#f5f6fa;
     color:#333;
@@ -34,6 +34,10 @@ h1{
     margin-bottom:20px;
 }
 
+h2{
+    margin-top:25px;
+}
+
 .summary-box{
     background:white;
     border-radius:12px;
@@ -42,6 +46,7 @@ h1{
     margin-bottom:20px;
     text-align:center;
     line-height:1.8;
+    font-size:16px;
 }
 
 #recentTable{
@@ -59,7 +64,7 @@ table{
     box-shadow:0 2px 8px rgba(0,0,0,0.08);
 }
 
-th, td{
+th,td{
     border:1px solid #ddd;
     padding:8px;
     text-align:center;
@@ -85,6 +90,7 @@ th{
 
 .chart-box h3{
     text-align:center;
+    margin-bottom:10px;
 }
 
 .avg-box{
@@ -114,12 +120,13 @@ canvas{
         margin:10px;
     }
 
-    th, td{
+    th,td{
         font-size:11px;
     }
 }
 
 </style>
+
 </head>
 
 <body>
@@ -157,7 +164,7 @@ canvas{
     </div>
 
     <div class="chart-box">
-        <h3>🛌 每月 24 點前睡覺次數</h3>
+        <h3>🛌 每月24點前睡覺次數</h3>
         <canvas id="sleepChart"></canvas>
         <div class="avg-box" id="avgSleep"></div>
     </div>
@@ -198,7 +205,7 @@ fetch("sport.csv")
 
         const row = {};
 
-        headers.forEach((h, i) => {
+        headers.forEach((h,i)=>{
 
             row[h.trim()] = values[i]
                 ? values[i].trim()
@@ -219,11 +226,12 @@ fetch("sport.csv")
 
                 let mn = Number(parts[1] || 0);
 
+                // 凌晨時間視為隔天
                 if(hr < 6){
                     hr += 24;
                 }
 
-                sleepHour = hr + (mn / 60);
+                sleepHour = hr + mn / 60;
 
             }catch(e){
 
@@ -343,7 +351,7 @@ function renderAll(){
     const sums =
         Object.values(monthly);
 
-    renderCharts(labels, sums);
+    renderCharts(labels,sums);
 
     renderAverages(sums);
 
@@ -432,7 +440,7 @@ function createChart(id, labels, data, color){
         chartInstances[id].destroy();
     }
 
-    chartInstances[id] = new Chart(ctx, {
+    chartInstances[id] = new Chart(ctx,{
 
         type:"bar",
 
@@ -444,9 +452,9 @@ function createChart(id, labels, data, color){
 
                 data,
 
-                backgroundColor: color + "99",
+                backgroundColor:color + "99",
 
-                borderColor: color,
+                borderColor:color,
 
                 borderWidth:1
             }]
@@ -487,33 +495,33 @@ function createChart(id, labels, data, color){
     });
 }
 
-function renderCharts(labels, sums){
+function renderCharts(labels,sums){
 
     createChart(
         "aerobicChart",
         labels,
-        sums.map(x => x.aerobic),
+        sums.map(x=>x.aerobic),
         "#36b9cc"
     );
 
     createChart(
         "assignedChart",
         labels,
-        sums.map(x => x.assigned),
+        sums.map(x=>x.assigned),
         "#f6c23e"
     );
 
     createChart(
         "strengthChart",
         labels,
-        sums.map(x => x.strength),
+        sums.map(x=>x.strength),
         "#4e73df"
     );
 
     createChart(
         "sleepChart",
         labels,
-        sums.map(x => x.success_count),
+        sums.map(x=>x.success_count),
         "#1cc88a"
     );
 }
@@ -542,10 +550,10 @@ function renderAverages(sums){
 function renderSleepSummary(){
 
     const totalDays =
-        allData.filter(x => x.sleep_raw).length;
+        allData.filter(x=>x.sleep_raw).length;
 
     const successDays =
-        allData.filter(x => x.is_success).length;
+        allData.filter(x=>x.is_success).length;
 
     const rate =
         totalDays
