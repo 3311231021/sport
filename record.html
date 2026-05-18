@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8" />
-  <title>運動記錄</title>
+  <title>健康管理與運動記錄系統</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
   <style>
@@ -32,7 +32,7 @@
     /* 統計圖區塊 */
     .chart-container {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       gap: 20px;
       justify-items: center;
       align-items: stretch;
@@ -40,11 +40,12 @@
     .chart-box {
       background: #fff;
       border-radius: 12px;
-      padding: 10px;
+      padding: 15px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
       text-align: center;
       width: 100%;
       max-width: 500px;
+      box-sizing: border-box;
     }
     .chart-box h3 { font-size: 15px; margin-bottom: 6px; }
     .avg-box { font-size: 13px; margin-top: 4px; color: #555; }
@@ -62,12 +63,12 @@
   </style>
 </head>
 <body>
-  <h1>🏋️‍♀️ Workout 運動記錄</h1>
+  <h1>🏋️‍♀️健康管理與運動記錄系統 (Demo: Nancy)</h1>
   <div id="todayDate"></div>
   
-  <h2> 🎯  Target  每週至少運動3次</h2>
+  <h2> 🎯 Target 每週至少運動3次 ＆ 落實12點前自覺關機</h2>
   
-  <h2>🗓️ 最近 10 筆運動紀錄</h2>
+  <h2>🗓️ 最近 10 筆健康與運動紀錄</h2>
   <div id="recentTable"></div>
 
   <div class="chart-container">
@@ -85,6 +86,12 @@
       <h3>💪 肌力訓練次數</h3>
       <canvas id="strengthChart"></canvas>
       <div class="avg-box" id="avgStrength"></div>
+    </div>
+    <!-- 💖 新增的睡眠與自覺防禦儀表板 -->
+    <div class="chart-box">
+      <h3>🛌 自覺生活防禦：入睡時間統計 (點)</h3>
+      <canvas id="sleepChart"></canvas>
+      <div class="avg-box" id="avgSleep"></div>
     </div>
   </div>
 
@@ -107,6 +114,20 @@
 
         allData = lines.map(line => {
           const values = line.split(",");
+          
+          // 解析睡眠入睡時間，若未填寫或舊資料，預設為健康的 23:30 
+          let sleepTimeStr = values[11] ? values[11].trim() : "23:30"; 
+          let sleepHourDecimal = 23.5; // 轉為數值便於繪圖
+          
+          if(sleepTimeStr.includes(":")) {
+            const parts = sleepTimeStr.split(":");
+            let hr = Number(parts[0]);
+            let mn = Number(parts[1]);
+            // 如果跨夜到凌晨兩點半，在數值上算作 24 + 2.5 = 26.5 點
+            if (hr < 6) hr += 24; 
+            sleepHourDecimal = hr + (mn / 60);
+          }
+
           return {
             date: values[0],
             running: Number(values[1] || 0),
@@ -118,7 +139,9 @@
             other: Number(values[7] || 0),
             speed: values[8] || "",
             heart_rate: values[9] || "",
-            remark: values[10] || ""
+            remark: values[10] || "",
+            sleep_hour: sleepHourDecimal,      // 數值化入睡點
+            sleep_raw: values[11] || "23:30"   // 原始字串顯示在表格
           };
         });
 
@@ -137,9 +160,8 @@
 
       const monthly = {};
       allData.forEach(item => {
-        // 這裡修正，支援 2025/10/27 或 2025-10-27 皆可
         const ym = item.date.replace(/\//g, '-').slice(0, 7);
-        if (!monthly[ym]) monthly[ym] = { running: 0, weight: 0, ball: 0, assigned: 0, trail: 0, yoga: 0, other: 0 };
+        if (!monthly[ym]) monthly[ym] = { running: 0, weight: 0, ball: 0, assigned: 0, trail: 0, yoga: 0, other: 0, sleep_sum: 0, count: 0 };
         monthly[ym].running += item.running;
         monthly[ym].weight += item.weight;
         monthly[ym].ball += item.ball;
@@ -147,13 +169,16 @@
         monthly[ym].trail += item.trail;
         monthly[ym].yoga += item.yoga;
         monthly[ym].other += item.other;
+        monthly[ym].sleep_sum += item.sleep_hour;
+        monthly[ym].count += 1;
       });
 
       let labels = Object.keys(monthly).sort();
       let sums = Object.values(monthly).map(d => ({
         aerobic: d.running + d.ball + d.trail,
         assigned: d.assigned,
-        strength: d.weight + d.yoga
+        strength: d.weight + d.yoga,
+        sleep_avg: d.count ? Number((d.sleep_sum / d.count).toFixed(2)) : 23.5 // 計算當月平均入睡時間點
       }));
 
       if (labels.length > 12) {
@@ -173,7 +198,7 @@
         <thead><tr>
           <th>日期</th><th>跑步(min)</th><th>肌力訓練</th>
           <th>球類(min)</th><th>教練指定</th>
-          <th>健行(min)</th><th>游泳</th><th>其他</th><th>跑速</th><th>心率</th><th>備註</th>
+          <th>健行(min)</th><th>游泳</th><th>其他</th><th>跑速</th><th>心率</th><th>入睡時間</th><th>備註</th>
         </tr></thead>`;
       const tbody = data.map(r => `
         <tr>
@@ -187,6 +212,7 @@
           <td>${r.other}</td>
           <td>${r.speed}</td>
           <td>${r.heart_rate}</td>
+          <td style="font-weight:bold; color: ${r.sleep_hour >= 24 ? '#e74a3b':'#1cc88a'}">${r.sleep_raw}</td>
           <td>${r.remark}</td>
         </tr>
       `).join("");
@@ -195,6 +221,7 @@
     }
 
     function renderCharts(labels, sums) {
+      // 渲染前面三個運動圖表
       const datasets = [
         { id: "aerobicChart", label: "有氧活動時間", key: "aerobic", color: "#36b9cc" },
         { id: "assignedChart", label: "教練指定作業", key: "assigned", color: "#f6c23e" },
@@ -234,6 +261,60 @@
           }
         });
       });
+
+      // 💖 核心技術亮點：單獨客製化第四個睡眠自覺圖表
+      const sleepId = "sleepChart";
+      if (chartInstances[sleepId]) chartInstances[sleepId].destroy();
+      const sleepCtx = document.getElementById(sleepId);
+      
+      chartInstances[sleepId] = new Chart(sleepCtx, {
+        type: "bar",
+        data: {
+          labels,
+          datasets: [{
+            label: "平均入睡時間點",
+            data: sums.map(x => x.sleep_avg),
+            // 行為經濟學動態變色：超過 24 點（12:00 AM）就自動顯示警告紅，達標顯示自覺綠
+            backgroundColor: sums.map(x => x.sleep_avg >= 24 ? "#e74a3b99" : "#1cc88a99"),
+            borderColor: sums.map(x => x.sleep_avg >= 24 ? "#e74a3b" : "#1cc88a"),
+            borderWidth: 1
+          }]
+        },
+        plugins: [ChartDataLabels],
+        options: {
+          aspectRatio: 4/3,
+          responsive: true,
+          scales: { 
+            y: { 
+              min: 20, // 晚上 8 點開始
+              max: 27, // 凌晨 3 點截止
+              title: { display: true, text: "時間 (24小時制)" },
+              ticks: {
+                callback: function(value) {
+                  if(value >= 24) return "凌晨 " + (value - 24) + " 點";
+                  return "晚上 " + value + " 點";
+                }
+              }
+            } 
+          },
+          plugins: {
+            legend: { display: false },
+            datalabels: {
+              color: '#111',
+              anchor: 'end',
+              align: 'top',
+              font: { weight: 'bold', size: 11 },
+              formatter: value => {
+                // 將十進位時間轉回 23:30 或 00:45 字串展示
+                let hr = Math.floor(value);
+                let mn = Math.round((value - hr) * 60);
+                if (hr >= 24) hr -= 24;
+                return `${String(hr).padStart(2, '0')}:${String(mn).padStart(2, '0')}`;
+              }
+            }
+          }
+        }
+      });
     }
 
     function renderAverages(sums) {
@@ -241,6 +322,13 @@
       document.getElementById("avgAerobic").innerText = `📊 平均：${avg(sums.map(x => x.aerobic))} 分鐘/月`;
       document.getElementById("avgAssigned").innerText = `📊 平均：${avg(sums.map(x => x.assigned))} 次/月`;
       document.getElementById("avgStrength").innerText = `📊 平均：${avg(sums.map(x => x.strength))} 次/月`;
+      
+      // 轉化平均睡眠時間文字
+      const rawSleepAvg = sums.length ? sums.reduce((a,b)=>a+b.sleep_avg, 0)/sums.length : 23.5;
+      let hr = Math.floor(rawSleepAvg);
+      let mn = Math.round((rawSleepAvg - hr) * 60);
+      if(hr >= 24) hr -= 24;
+      document.getElementById("avgSleep").innerText = `🛌 總體平均入睡時間：${String(hr).padStart(2, '0')}:${String(mn).padStart(2, '0')}`;
     }
   </script>
 </body>
