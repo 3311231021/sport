@@ -203,7 +203,7 @@ canvas{
     }
 
     table{
-        min-width:680px;
+        min-width:760px;
     }
 
     .chart-box h3{
@@ -224,7 +224,7 @@ canvas{
 @media(max-width:400px){
 
     table{
-        min-width:620px;
+        min-width:720px;
     }
 
     th,
@@ -433,9 +433,9 @@ function processCSV(text){
 
             other: toNum(row.other),
 
-            speed: row.speed,
+            heart_rate: toNum(row.heart_rate),
 
-            heart_rate: row.heart_rate,
+            speed: row.speed,
 
             sleep_raw: sleepRaw,
 
@@ -499,8 +499,7 @@ function renderAll(){
             item.assigned;
 
         monthly[ym].strength +=
-            item.weight +
-            item.yoga;
+            item.weight;
 
         if(item.is_success){
 
@@ -539,8 +538,8 @@ function renderRecentTable(data){
             <th>球類</th>
             <th>教練指定</th>
             <th>健行</th>
-            <th>瑜珈</th>
             <th>其他</th>
+            <th>心率</th>
             <th>入睡時間</th>
             <th>24點前睡</th>
             <th>備註</th>
@@ -565,9 +564,9 @@ function renderRecentTable(data){
 
             <td>${r.trail}</td>
 
-            <td>${r.yoga}</td>
-
             <td>${r.other}</td>
+
+            <td>${r.heart_rate || '-'}</td>
 
             <td class="${r.is_success ? 'success':'fail'}">
                 ${r.sleep_raw || '-'}
@@ -598,7 +597,7 @@ function createChart(id, labels, data, color){
 
     if(!ctx) return;
 
-    if(chartInstances[id] instanceof Chart){
+    if(chartInstances[id]){
 
         chartInstances[id].destroy();
     }
@@ -620,6 +619,7 @@ function createChart(id, labels, data, color){
                 borderColor:color,
 
                 borderWidth:1,
+
                 borderRadius:8
             }]
         },
