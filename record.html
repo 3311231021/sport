@@ -10,7 +10,6 @@ content="width=device-width, initial-scale=1, maximum-scale=1">
 
 <title>健康管理與運動記錄系統</title>
 
-<!-- LINE / FB 預覽 -->
 <meta property="og:title"
 content="健康管理與運動記錄系統">
 
@@ -93,7 +92,7 @@ h2{
 
 table{
     width:100%;
-    min-width:900px;
+    min-width:680px;
     border-collapse:collapse;
     background:white;
     overflow:hidden;
@@ -178,7 +177,7 @@ canvas{
     }
 
     table{
-        min-width:760px;
+        min-width:640px;
     }
 }
 
@@ -203,7 +202,7 @@ canvas{
     }
 
     table{
-        min-width:760px;
+        min-width:620px;
     }
 
     .chart-box h3{
@@ -224,7 +223,7 @@ canvas{
 @media(max-width:400px){
 
     table{
-        min-width:720px;
+        min-width:580px;
     }
 
     th,
@@ -345,7 +344,6 @@ function normalizeSleepHour(timeStr){
 
     let hour = h + (m / 60);
 
-    // 凌晨視為隔天
     if(hour < 6){
         hour += 24;
     }
@@ -535,10 +533,9 @@ function renderRecentTable(data){
             <th>日期</th>
             <th>跑步</th>
             <th>肌力</th>
-            <th>球類</th>
             <th>教練指定</th>
-            <th>健行</th>
             <th>其他</th>
+            <th>速率</th>
             <th>心率</th>
             <th>入睡時間</th>
             <th>24點前睡</th>
@@ -558,15 +555,19 @@ function renderRecentTable(data){
 
             <td>${r.weight}</td>
 
-            <td>${r.ball}</td>
-
             <td>${r.assigned}</td>
-
-            <td>${r.trail}</td>
 
             <td>${r.other}</td>
 
-            <td>${r.heart_rate || '-'}</td>
+            <td>
+                ${r.speed ? r.speed + '/km' : '-'}
+            </td>
+
+            <td>
+                ${r.heart_rate
+                    ? r.heart_rate + ' bpm'
+                    : '-'}
+            </td>
 
             <td class="${r.is_success ? 'success':'fail'}">
                 ${r.sleep_raw || '-'}
